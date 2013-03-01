@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 
 #define HAS_FILENAME (1)
@@ -67,11 +66,11 @@ void ReadFile(const char *filename)
     /* Printing for file */
     struct stat st;
     FILE *fp;
-    char displayStr[MAX_FILEPATH_LEN];
+    double percent = 0;
     int fileSize = 0;
     int bytesDisplayed = 0;
 	int totalBytes = 0;
-    int percent = 0;
+	int firstLoop = 1; // Are we looping through the first time?
 
     // Get the stat of the file
     if(stat(filename, &st) != 0)
@@ -98,11 +97,16 @@ void ReadFile(const char *filename)
 			break;
 		totalBytes += bytesDisplayed;
 		percent = Percent(totalBytes, fileSize);
+		
+		// Print the percent (and file name if first time looping)
+		if(firstLoop)
+		{
+			printf("%s %.2f%%\n", filename, percent);
+			firstLoop = 0;
+		}
+		else
+			printf("%.2f%%\n", percent);
 	}
-
-    // Print the file name (and the percentage displayed)
-    sprintf(displayStr, "%s %d%%\n", filename, percent);
-    printf("%s\n", displayStr);
 
     // Function()
     // Using the total file size and the number of lines shown (get
@@ -128,7 +132,7 @@ int Display(FILE* fp)
 		if(fgets(line, sizeof(line), fp))
 		{
 			bytesDisplayed += strlen(line);
-			printf("%s\n", line);
+			printf("%s", line);
 		}
 		else if(ferror(fp))
 		{
@@ -142,17 +146,30 @@ int Display(FILE* fp)
 	return bytesDisplayed;
 }
 
+/*
+** BytesInStr(size_t length)
+
+* Returns the number of bytes of a string 
+	of a given length
+
+* size_t length: The length of the string
+* Returns: The number of bytes in the string
+*/
 int BytesInStr(size_t length)
 {
 	return length * sizeof(char);
 }
 
 /*
+** Percent(double, double)
+
+* Returns part / total * 100
+
 * double part: The denomiator
 * double total: The numerator
 * Returns: The percentage of part in total
 */
 double Percent(double part, double total)
 {
-    return round(total / part) * DECIMAL_TO_PERCENT;
+	return (part / total) * DECIMAL_TO_PERCENT;
 }
