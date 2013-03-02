@@ -3,33 +3,136 @@
 * CS 3060
 * Assignment 4
 */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <ctype.h>
 
 #define HAS_FILENAME (1)
 #define MAX_FILEPATH_LEN (256)
 #define NUM_OF_LINES (23)
 #define DECIMAL_TO_PERCENT (100.0)
+#define STDIN (0)
+#define SLEEPTIME (1)
+
+#define ENTER ('\n')
+#define SPACE (' ')
+#define QUIT ('q')
+
+//
+void GetTerminalAttr(struct termios*);
+void SetTerminalAttr(struct termios);
+void SetupTerminal();
 
 void ReadFile(const char*);
 void ReadStdin(FILE*);
+
 double Percent(double, double);
+char Prompt();
+char GetResponse();
 int DisplayOne(FILE*);
 int Display(FILE*);
 int BytesInStr(size_t);
 
+// GLOBAL VARS
+struct termios _origTerm;
+
+/**/
 int main(int argc, char** argv)
 {
+    // Block and setup signal handlers
+
+    // Get the current terminal attributes
+    GetTerminalAttr(&_origTerm);
+    // Set the attributes so that it is non-blocking and non-echo
+    SetupTerminal();    
+
     // Determine whether the stream will be stdin or from a file
     if(argc > HAS_FILENAME)
         ReadFile(argv[1]); // Filename must be here
     else
         ReadStdin(stdin);
+
+    // Restore the terminal to it's original settings
+    SetTerminalAttr(_origTerm);
     return 0;
 }
 
+/*
+** GetTerminalAttr(struct termios*)
+
+* Get the orignal attributes of stdin and return them.
+
+* termios termAttr: The struct to store the orignal 
+    terminal attributes in.
+*/
+void GetTerminalAttr(struct termios *termAttr)
+{
+    if(tcgetattr(STDIN, termAttr) != 0)
+    {
+        perror("Get Terminal attributes");
+        exit(1);
+    }
+}
+
+/*
+** SetTerminal(struct termios)
+
+* Sets the attributes of stdin using the argument 
+    without waiting.
+
+* termios termAttr: The attributes to the stdin to.
+*/
+void SetTerminalAttr(struct termios termAttr)
+{
+    if(tcsetattr(STDIN, TCSANOW, &termAttr) != 0)
+    {
+        perror("Set Terminal attributes");
+        exit(1);
+    }
+}
+
+/*
+** SetupTerminal()
+
+* Sets up the terminal so that it is non-blocking
+    and is non-echo.
+*/
+void SetupTerminal()
+{
+    struct termios tmp;
+    
+    // Turn off echo
+    GetTerminalAttr(&tmp);
+    tmp.c_lflag &= ~ECHO;
+    SetTerminalAttr(tmp);
+
+    // Turn off blocking
+    fcntl(STDIN, F_SETFL, O_NONBLOCK);
+}
+
+/*
+** ToggleICanon()
+
+* If canonical mode is on, turn it off and vice versa.
+*/
+void ToggleICanon()
+{
+    struct termios tmp;
+
+    GetTerminalAttr(&tmp); // Get current attributes
+    if(tmp.c_lflag & ICANON) // Check if ICANON is set
+        tmp.c_lflag &= ~ICANON;
+    else
+        tmp.c_lflag |= ICANON;
+    SetTerminalAttr(tmp); // Set the new attribute value
+}
 
 /*
 ** void ReadStdin(FILE*)
@@ -67,6 +170,7 @@ void ReadFile(const char *filename)
     /* Printing for file */
     struct stat st;
     FILE *fp;
+    char input;
     double percent = 0;
     int fileSize = 0;
     int bytesDisplayed = 0;
@@ -90,10 +194,10 @@ void ReadFile(const char *filename)
     // Determine the number of bytes in the file
     fileSize = st.st_size;
 
-    // TODO: Display the first 23 lines
+    // Display 23 lines and then prompt for user
+    bytesDisplayed = Display(fp);
 	while(1)
 	{
-		bytesDisplayed = Display(fp);
 		if(bytesDisplayed == 0)
 			break;
 		totalBytes += bytesDisplayed;
@@ -107,10 +211,78 @@ void ReadFile(const char *filename)
 		}
 		else
 			printf("%.2f%%\n", percent);
-	}
 
-    // Function()
-    // Using the total file size and the number of lines shown (get
+        // Now wait for user input
+        input = Prompt();
+        if(input == ENTER)
+            bytesDisplayed = DisplayOne(fp);
+        else if(input == SPACE)
+            bytesDisplayed = Display(fp);
+        else if(input == QUIT)
+            break;
+        else
+        {
+            fprintf(stderr, "%s %d\n", "Error reading input! CODE: ", input);
+            exit(1);
+        }
+	}
+    fclose(fp); // Close the file
+}
+
+/*
+** Prompt()
+
+* Blocks and prompts the user for input.
+    It then returns the character that
+    the user entered.
+
+* Returns: The character that the user entered.
+*/
+char Prompt()
+{
+    char input;
+    
+    printf("%s ", 
+        "\033[7mPress 'ENTER' or 'SPACE' to continue. 'q' to quit:\033[m");
+    fflush(stdout); // Print out the prompt
+    while(1)
+    {
+        sleep(SLEEPTIME);
+        input = tolower(GetResponse());
+        if(input == EOF)
+            continue; // User didn't enter anything
+        return input; // We already know input is good
+    }
+}
+
+/*
+** GetResponse()
+
+* Keeps waiting until the user enters a valid character
+    or the user enters nothing (EOF).
+
+* Returns: A char of what the user entered.
+*/
+char GetResponse()
+{ 
+    int input;
+    char commands[3];
+    
+    ToggleICanon(); // Turn canonical mode off (no buffering)
+    // Put all the available commands in a string
+    sprintf(commands, "%c%c%c", ENTER, SPACE, QUIT);
+
+    while((input = getchar()) != EOF)
+    {
+        if(strchr(commands, input) != NULL)
+        {
+            if(input == QUIT)
+                printf("%c\r\n", QUIT); // Show user pressed 'q'
+            break;
+        }
+    }
+    ToggleICanon(); // Turn canonical mode on
+    return (char)input;
 }
 
 /*
