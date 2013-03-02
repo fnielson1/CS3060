@@ -16,6 +16,7 @@
 void ReadFile(const char*);
 void ReadStdin(FILE*);
 double Percent(double, double);
+int DisplayOne(FILE*);
 int Display(FILE*);
 int BytesInStr(size_t);
 
@@ -89,7 +90,7 @@ void ReadFile(const char *filename)
     // Determine the number of bytes in the file
     fileSize = st.st_size;
 
-    // Display the first 23 lines
+    // TODO: Display the first 23 lines
 	while(1)
 	{
 		bytesDisplayed = Display(fp);
@@ -115,35 +116,55 @@ void ReadFile(const char *filename)
 /*
 ** Display(FILE*)
 
-* Displays 23 lines from the stream and returns the number
+* Displays one line from the stream and returns the number
 	of bytes displayed
 
 * FILE *fp: Pointer to the stream
 * Returns: The number of bytes displayed (0 if none)
 */
-int Display(FILE* fp)
+int DisplayOne(FILE* fp)
 {
 	char line[MAX_FILEPATH_LEN];
 	int bytesDisplayed = 0;
-	int index = 0;
 	
+	if(fgets(line, sizeof(line), fp))
+	{
+		bytesDisplayed = BytesInStr(strlen(line));
+		printf("%s", line);
+	}
+	else if(ferror(fp))
+	{
+		perror("DisplayOne");
+		exit(1);
+	}
+	return bytesDisplayed; // EOF
+}
+
+/*
+** Display(FILE*)
+
+* Calls DisplayOne NUM_OF_LINES times and returns
+    the number of bytes displayed
+
+* FILE *fp: The pointer to the file
+* Returns: The number of bytes displayed
+*/
+int Display(FILE* fp)
+{
+    int totalDisplayed = 0;
+    int bytesDisplayed = 0;
+    int index = 0;
+       
 	while(index < NUM_OF_LINES)
 	{
-		if(fgets(line, sizeof(line), fp))
-		{
-			bytesDisplayed += strlen(line);
-			printf("%s", line);
-		}
-		else if(ferror(fp))
-		{
-			perror("display");
-			exit(1);
-		}
-		else
-			return bytesDisplayed; // EOF
-		index++;
-	}
-	return bytesDisplayed;
+        bytesDisplayed = DisplayOne(fp);
+        if(bytesDisplayed == 0)
+            return totalDisplayed; // EOF
+        totalDisplayed += bytesDisplayed;
+
+        index++; 
+    }
+    return totalDisplayed;
 }
 
 /*
