@@ -19,7 +19,6 @@
 #define MAX_PROMPT_LEN (100)
 #define NUM_OF_LINES (23)
 #define DECIMAL_TO_PERCENT (100.0)
-#define STDIN (0)
 
 #define ENTER ('\n')
 #define SPACE (' ')
@@ -31,12 +30,12 @@ void SetTerminalAttr(struct termios);
 void SetupTerminal();
 void ResetTerminal();
 
-void ReadFile(const char*);
+void ReadFile(FILE*, const char*);
 void ReadStdin(FILE*);
 
 double Percent(double, double);
-char Prompt();
-char GetResponse();
+char Prompt(FILE*);
+char GetResponse(FILE*);
 void ErasePrompt(int);
 int DisplayOne(FILE*);
 int Display(FILE*);
@@ -44,18 +43,25 @@ int BytesInStr(size_t);
 
 // GLOBAL VARS
 struct termios _origTerm;
+int fd_tty;
+FILE *fp_tty;
+
 
 /**/
 int main(int argc, char** argv)
 {
     // Block and setup signal handlers
 
+    // Get a handle on the terminal
+    fd_tty = open("/dev/tty", O_RDONLY);
+    fp_tty = fdopen(fd_tty, "r");
+
     // Setup the terminal attributes
-    SetupTerminal();    
+    SetupTerminal();
 
     // Determine whether the stream will be stdin or from a file
     if(argc > HAS_FILENAME)
-        ReadFile(argv[1]); // Filename must be here
+        ReadFile(fp_tty, argv[1]); // Filename must be here
     else
         ReadStdin(stdin);
 
@@ -74,7 +80,7 @@ int main(int argc, char** argv)
 */
 void GetTerminalAttr(struct termios *termAttr)
 {
-    if(tcgetattr(STDIN, termAttr) != 0)
+    if(tcgetattr(fd_tty, termAttr) != 0)
     {
         perror("Get Terminal attributes");
         exit(1);
@@ -91,7 +97,7 @@ void GetTerminalAttr(struct termios *termAttr)
 */
 void SetTerminalAttr(struct termios termAttr)
 {
-    if(tcsetattr(STDIN, TCSANOW, &termAttr) != 0)
+    if(tcsetattr(fd_tty, TCSANOW, &termAttr) != 0)
     {
         perror("Set Terminal attributes");
         exit(1);
@@ -159,9 +165,9 @@ void ToggleICanon()
     been read (up to 23 lines) and how many bytes have
     been displayed.
 
-* const FILE *fs: A pointer to stdin
+* const FILE *fp: A pointer to stdin
 */
-void ReadStdin(FILE *fs)
+void ReadStdin(FILE *fp)
 {
 
     /* Printing for stdin */
@@ -173,16 +179,17 @@ void ReadStdin(FILE *fs)
 }
 
 /*
-** void ReadFile(char*)
+** void ReadFile(FILE*, char*)
 
 * Reads input from the given file one line at a time.
     It then displayes what has been read (up to 23 lines)
     and the percentage of the file that has been displayed.
 
-* char* filename: The name of the file
+* FILE *in: The stream where we'll read input from.
+* char *filename: The name of the file.
 */
 
-void ReadFile(const char *filename)
+void ReadFile(FILE* in, const char *filename)
 {
     /* Printing for file */
     struct stat st;
@@ -230,7 +237,7 @@ void ReadFile(const char *filename)
 			printf("%.2f%%\n", percent);
 
         // Now wait for user input
-        input = Prompt();
+        input = Prompt(in);
         if(input == ENTER)
             bytesDisplayed = DisplayOne(fp);
         else if(input == SPACE)
@@ -247,15 +254,17 @@ void ReadFile(const char *filename)
 }
 
 /*
-** Prompt()
+** Prompt(FILE*)
 
 * Blocks and prompts the user for input.
     It then returns the character that
     the user entered.
 
+* FILE *in: A pointer to the stream where we'll 
+    read the input.
 * Returns: The character that the user entered.
 */
-char Prompt()
+char Prompt(FILE *in)
 {
     char prompt[MAX_PROMPT_LEN];
     char input;
@@ -264,9 +273,11 @@ char Prompt()
         "\033[7mPress 'ENTER' or 'SPACE' to continue. 'q' to quit:\033[m");
     printf("%s", prompt);
     fflush(stdout); // Print out the prompt
+    
+    // Get user input 
     while(1)
     {
-        input = tolower(GetResponse());
+        input = tolower(GetResponse(in));
         if(input == EOF)
             continue; // User didn't enter anything
         
@@ -279,14 +290,16 @@ char Prompt()
 }
 
 /*
-** GetResponse()
+** GetResponse(FILE*)
 
 * Keeps waiting until the user enters a valid character
     or the user enters nothing (EOF).
 
+* FILE *in: A pointer to the stream where we'll
+    read the input.
 * Returns: A char of what the user entered.
 */
-char GetResponse()
+char GetResponse(FILE *in)
 { 
     int input;
     char commands[4]; // One extra for the null char
@@ -295,7 +308,7 @@ char GetResponse()
     // Put all the available commands in a string
     sprintf(commands, "%c%c%c", ENTER, SPACE, QUIT);
     
-    while((input = getchar()) != EOF)
+    while((input = fgetc(in)))
     {
         if(strchr(commands, input) != NULL)
         {
