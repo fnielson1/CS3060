@@ -16,10 +16,10 @@
 
 #define HAS_FILENAME (1)
 #define MAX_FILEPATH_LEN (256)
+#define MAX_PROMPT_LEN (100)
 #define NUM_OF_LINES (23)
 #define DECIMAL_TO_PERCENT (100.0)
 #define STDIN (0)
-#define SLEEPTIME (1)
 
 #define ENTER ('\n')
 #define SPACE (' ')
@@ -29,6 +29,7 @@
 void GetTerminalAttr(struct termios*);
 void SetTerminalAttr(struct termios);
 void SetupTerminal();
+void ResetTerminal();
 
 void ReadFile(const char*);
 void ReadStdin(FILE*);
@@ -36,6 +37,7 @@ void ReadStdin(FILE*);
 double Percent(double, double);
 char Prompt();
 char GetResponse();
+void ErasePrompt(int);
 int DisplayOne(FILE*);
 int Display(FILE*);
 int BytesInStr(size_t);
@@ -48,9 +50,7 @@ int main(int argc, char** argv)
 {
     // Block and setup signal handlers
 
-    // Get the current terminal attributes
-    GetTerminalAttr(&_origTerm);
-    // Set the attributes so that it is non-blocking and non-echo
+    // Setup the terminal attributes
     SetupTerminal();    
 
     // Determine whether the stream will be stdin or from a file
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
         ReadStdin(stdin);
 
     // Restore the terminal to it's original settings
-    SetTerminalAttr(_origTerm);
+    ResetTerminal();
     return 0;
 }
 
@@ -101,20 +101,37 @@ void SetTerminalAttr(struct termios termAttr)
 /*
 ** SetupTerminal()
 
-* Sets up the terminal so that it is non-blocking
-    and is non-echo.
+* Get the original terminal attributes and then
+    set the current ones to non-echo.
 */
 void SetupTerminal()
 {
     struct termios tmp;
     
+    // Get the current terminal attributes
+    GetTerminalAttr(&_origTerm);
+
     // Turn off echo
     GetTerminalAttr(&tmp);
     tmp.c_lflag &= ~ECHO;
     SetTerminalAttr(tmp);
 
-    // Turn off blocking
-    fcntl(STDIN, F_SETFL, O_NONBLOCK);
+    // When the function exits normally, it'll reset the
+    // terminal automatically
+    atexit(&ResetTerminal);
+
+    // Turn off blocking (REFERENCE ONLY!)
+    //fcntl(STDIN, F_SETFL, O_NONBLOCK);
+}
+
+/*
+** ResetTerminal()
+
+* Resets the terminal attributes to the way they were.
+*/
+void ResetTerminal()
+{
+    SetTerminalAttr(_origTerm);
 }
 
 /*
@@ -240,18 +257,24 @@ void ReadFile(const char *filename)
 */
 char Prompt()
 {
+    char prompt[MAX_PROMPT_LEN];
     char input;
     
-    printf("%s ", 
+    sprintf(prompt, "%s ", 
         "\033[7mPress 'ENTER' or 'SPACE' to continue. 'q' to quit:\033[m");
+    printf("%s", prompt);
     fflush(stdout); // Print out the prompt
     while(1)
     {
-        sleep(SLEEPTIME);
         input = tolower(GetResponse());
         if(input == EOF)
             continue; // User didn't enter anything
-        return input; // We already know input is good
+        
+        // Clear the inverse prompt (so that the user can read easily)
+        // Must add 5 because it otherwise won't include the inverse
+        // video characters at the end because there is a '\0' before them
+        ErasePrompt(strlen(prompt) + 5);
+        return input;
     }
 }
 
@@ -266,12 +289,12 @@ char Prompt()
 char GetResponse()
 { 
     int input;
-    char commands[3];
+    char commands[4]; // One extra for the null char
     
     ToggleICanon(); // Turn canonical mode off (no buffering)
     // Put all the available commands in a string
     sprintf(commands, "%c%c%c", ENTER, SPACE, QUIT);
-
+    
     while((input = getchar()) != EOF)
     {
         if(strchr(commands, input) != NULL)
@@ -283,6 +306,28 @@ char GetResponse()
     }
     ToggleICanon(); // Turn canonical mode on
     return (char)input;
+}
+
+/*
+** ErasePrompt()
+
+* Erases the inverse video prompt from the screen.
+    This allows the user to read the file more easily.
+
+* int length: The length of the prompt string.
+*/
+void ErasePrompt(int length)
+{
+    char erasePrompt[MAX_PROMPT_LEN];
+    
+    // Create enough spaces to erase the prompt
+    memset(erasePrompt, ' ', length + 5);
+
+    ToggleICanon(); // Turn off canonical mode
+    printf("%c", '\r'); // Return the beginning of the line
+    printf("%s", erasePrompt); // Erase the prompt
+    printf("%c", '\r'); // Return to the beginning to display next line
+    ToggleICanon(); // Turn canonical mode on again
 }
 
 /*
