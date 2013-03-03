@@ -1,7 +1,12 @@
 /* 
+* Authors:
 * Frank Nielson
-* CS 3060
-* Assignment 4
+
+* Class: CS 3060
+* Project: Assignment 4
+
+* This code has be written by the authors
+* listed above.
 */
 
 #include <stdio.h>
