@@ -31,7 +31,7 @@ void SetupTerminal();
 void ResetTerminal();
 
 void ReadFile(FILE*, const char*);
-void ReadStdin(FILE*);
+void ReadStdin(FILE*, FILE*);
 
 double Percent(double, double);
 char Prompt(FILE*);
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
     if(argc > HAS_FILENAME)
         ReadFile(fp_tty, argv[1]); // Filename must be here
     else
-        ReadStdin(stdin);
+        ReadStdin(fp_tty, stdin);
 
     // Restore the terminal to it's original settings
     ResetTerminal();
@@ -158,16 +158,17 @@ void ToggleICanon()
 }
 
 /*
-** void ReadStdin(FILE*)
+** void ReadStdin(FILE*, FILE*)
 
-* Reads input from *in (should be stdin)
-    one (char?) at a time. It then displays what has
+* Reads input from *fp (should be stdin).
+    It then displays what has
     been read (up to 23 lines) and how many bytes have
     been displayed.
 
-* const FILE *fp: A pointer to stdin
+* FILE *in: A pointer to the stream to read input from.
+* FILE *fp: A pointer to stdin
 */
-void ReadStdin(FILE *fp)
+void ReadStdin(FILE *in, FILE *fp)
 {
 
     /* Printing for stdin */
