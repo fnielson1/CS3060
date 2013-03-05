@@ -255,6 +255,7 @@ void ReadFile(FILE* in, const char *filename)
         else
         {
             fprintf(stderr, "%s %d\n", "Error reading input! CODE: ", input);
+			fclose(fp);
             exit(1);
         }
 	}
