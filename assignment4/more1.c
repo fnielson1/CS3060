@@ -69,8 +69,8 @@ int main(int argc, char** argv)
 	
 	// blocking all signals, but CTRL-C
 	sigfillset( &blocked );
-	sigdelset( &blocked, SIGINT );
 	sigHandler.sa_mask = blocked;
+	sigdelset( &blocked, SIGINT );
 	
 	// if error trying to call signal handler
 	if( sigaction(SIGINT, &sigHandler, NULL ) == -1 )
