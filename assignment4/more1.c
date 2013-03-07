@@ -54,6 +54,7 @@ void ctrl_C_Handler(int);
 struct termios _origTerm;
 int fd_tty;
 FILE *fp_tty;
+FILE *_fp;
 
 
 /**/
@@ -95,11 +96,16 @@ int main(int argc, char** argv)
 
 void ctrl_C_Handler(int s)
 {
-	// testing signal handler
-	printf("This is a test.\n");
 	// need to reset term settings
+	char *msg = "\nClosing with Ctrl-C\n";
+
 	ResetTerminal();
-	printf("Closing with Ctrl-C\n");
+	
+	// checking to see if file has been opened
+	if( ftell(_fp) != -1 )
+		fclose(_fp);
+	
+	write(STDERR_FILENO, msg, strlen(msg));
 	exit(1);
 }
 /*
@@ -217,7 +223,7 @@ void ReadStdin(FILE *in, FILE *fp)
 			break;
 		
 		totalBytes += bytesRead;
-		printf("%d\n", totalBytes);
+		printf("%d bytes\n", totalBytes);
 
 		// getting input command
 		input = Prompt(in);
@@ -259,7 +265,6 @@ void ReadFile(FILE* in, const char *filename)
 {
     /* Printing for file */
     struct stat st;
-    FILE *fp;
     char input;
     double percent = 0;
     int fileSize = 0;
@@ -274,8 +279,8 @@ void ReadFile(FILE* in, const char *filename)
         exit(1);
     }
     // Open the file
-    fp = fopen(filename, "r");
-    if(fp == NULL)
+    _fp = fopen(filename, "r");
+    if(_fp == NULL)
     {
         perror("fopen");
         exit(1);
@@ -285,7 +290,7 @@ void ReadFile(FILE* in, const char *filename)
     fileSize = st.st_size;
 
     // Display 23 lines and then prompt for user
-    bytesDisplayed = Display(fp);
+    bytesDisplayed = Display(_fp);
 	while(1)
 	{
 		if(bytesDisplayed == 0)
@@ -305,9 +310,9 @@ void ReadFile(FILE* in, const char *filename)
         // Now wait for user input
         input = Prompt(in);
         if(input == ENTER)
-            bytesDisplayed = DisplayOne(fp);
+            bytesDisplayed = DisplayOne(_fp);
         else if(input == SPACE)
-            bytesDisplayed = Display(fp);
+            bytesDisplayed = Display(_fp);
         else if(input == QUIT)
             break;
         else
@@ -316,7 +321,7 @@ void ReadFile(FILE* in, const char *filename)
             exit(1);
         }
 	}
-    fclose(fp); // Close the file
+    fclose(_fp); // Close the file
 }
 
 /*
