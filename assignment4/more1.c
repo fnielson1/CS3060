@@ -96,8 +96,10 @@ int main(int argc, char** argv)
 void ctrl_C_Handler(int s)
 {
 	// testing signal handler
-	printf("This is a test\n.");
+	printf("This is a test.\n");
 	// need to reset term settings
+	ResetTerminal();
+	printf("Closing with Ctrl-C\n");
 	exit(1);
 }
 /*
