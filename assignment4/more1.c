@@ -1,7 +1,7 @@
 /* 
 * Authors:
 * Frank Nielson
-* Caleb ********
+* Caleb Kruger
 
 * Class: CS 3060
 * Project: Assignment 4
@@ -20,6 +20,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <signal.h>
 
 #define HAS_FILENAME (1)
 #define MAX_FILEPATH_LEN (256)
@@ -47,19 +48,35 @@ void ErasePrompt(int);
 int DisplayOne(FILE*);
 int Display(FILE*);
 int BytesInStr(size_t);
+void ctrl_C_Handler(int);
 
 // GLOBAL VARS
 struct termios _origTerm;
 int fd_tty;
 FILE *fp_tty;
+FILE *_fp;
 
 
 /**/
 int main(int argc, char** argv)
 {
     // Block and setup signal handlers
+    struct sigaction sigHandler;
+	sigset_t blocked;
 
-    // Get a handle on the terminal
+	sigHandler.sa_handler = ctrl_C_Handler;
+	sigHandler.sa_flags = SA_RESTART;
+	
+	// blocking all signals, but CTRL-C
+	sigfillset( &blocked );
+	sigHandler.sa_mask = blocked;
+	sigdelset( &blocked, SIGINT );
+	
+	// if error trying to call signal handler
+	if( sigaction(SIGINT, &sigHandler, NULL ) == -1 )
+		perror("sigaction error.\n");
+	
+	// Get a handle on the terminal
     fd_tty = open("/dev/tty", O_RDONLY);
     fp_tty = fdopen(fd_tty, "r");
 
@@ -77,6 +94,20 @@ int main(int argc, char** argv)
     return 0;
 }
 
+void ctrl_C_Handler(int s)
+{
+	// need to reset term settings
+	char *msg = "\nClosing with Ctrl-C\n";
+
+	ResetTerminal();
+	
+	// checking to see if file has been opened
+	if( ftell(_fp) != -1 )
+		fclose(_fp);
+	
+	write(STDERR_FILENO, msg, strlen(msg));
+	exit(1);
+}
 /*
 ** GetTerminalAttr(struct termios*)
 
@@ -178,12 +209,45 @@ void ToggleICanon()
 void ReadStdin(FILE *in, FILE *fp)
 {
 
-    /* Printing for stdin */
-    // Read one (char?) at a time, display the line,
-    // and each time incrementing the number of bytes displayed
+	// declarations
+	int bytesRead = 0;
+	int totalBytes = 0;	// bytes read so far
+	char input;		// to test user input		
 
-    // Function()
-    // Print 23 lines of the file plus the percentage displayed
+	// calculating total bytes read in so far
+	bytesRead = Display(fp);
+	
+	// loop until end of file or 'q'
+	while( 1 ){
+		if( bytesRead == 0 )
+			break;
+		
+		totalBytes += bytesRead;
+		printf("%d bytes\n", totalBytes);
+
+		// getting input command
+		input = Prompt(in);
+		
+		// print out only one line
+		if( input == ENTER )
+			bytesRead = DisplayOne(fp);
+		
+		// print out 23 lines
+		else if ( input == SPACE )
+			bytesRead = Display( fp );
+		
+		// quit
+		else if ( input == QUIT )
+			break;
+		
+		// if no valid command was entered
+		else {
+			fprintf(stderr, "Error reading input! CODE: %d\n", input);
+			exit(1);
+		}
+		
+	}
+	fclose(fp);
 }
 
 /*
@@ -201,7 +265,6 @@ void ReadFile(FILE* in, const char *filename)
 {
     /* Printing for file */
     struct stat st;
-    FILE *fp;
     char input;
     double percent = 0;
     int fileSize = 0;
@@ -216,8 +279,8 @@ void ReadFile(FILE* in, const char *filename)
         exit(1);
     }
     // Open the file
-    fp = fopen(filename, "r");
-    if(fp == NULL)
+    _fp = fopen(filename, "r");
+    if(_fp == NULL)
     {
         perror("fopen");
         exit(1);
@@ -227,7 +290,7 @@ void ReadFile(FILE* in, const char *filename)
     fileSize = st.st_size;
 
     // Display 23 lines and then prompt for user
-    bytesDisplayed = Display(fp);
+    bytesDisplayed = Display(_fp);
 	while(1)
 	{
 		if(bytesDisplayed == 0)
@@ -247,9 +310,9 @@ void ReadFile(FILE* in, const char *filename)
         // Now wait for user input
         input = Prompt(in);
         if(input == ENTER)
-            bytesDisplayed = DisplayOne(fp);
+            bytesDisplayed = DisplayOne(_fp);
         else if(input == SPACE)
-            bytesDisplayed = Display(fp);
+            bytesDisplayed = Display(_fp);
         else if(input == QUIT)
             break;
         else
@@ -259,7 +322,7 @@ void ReadFile(FILE* in, const char *filename)
             exit(1);
         }
 	}
-    fclose(fp); // Close the file
+    fclose(_fp); // Close the file
 }
 
 /*
