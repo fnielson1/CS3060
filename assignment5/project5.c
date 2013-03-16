@@ -19,6 +19,10 @@
 #define SLEEPTIME (3)
 
 void Child();
+void SetupHandler(int, void(*)(int));
+
+// Signal handlers
+void OnCtrlC(int);
 void Child_onUsr1(int);
 void Child_onUsr2(int);
 
@@ -29,26 +33,91 @@ void Child_onUsr2(int);
 */
 static volatile sig_atomic_t _sigReceived = 0;
 
+// Global Vars
+pid_t _forkPid = -1;
+
+
 /**/
 int main()
 {
-	sigset_t maskAll; // Has all signals set
+	sigset_t maskAll; // All bits are set
 
 	// Block all signals (handlers aren't set up yet)
 	sigfillset(&maskAll);
 	sigprocmask(SIG_BLOCK, &maskAll, NULL);
 
-	// Check if we are a child process
+	SetupHandler(SIGINT, OnCtrlC); // Handle SIGINT
 
-	// If so, set up signal handlers and goto function
-	Child();
-
-	// Else, we are parent; set up different handlers and goto function
+	// Start 
+	//_forkPid = fork(); // Returns once for the child and for parent process
+	_forkPid = 0; // DEBUG ONLY!
+	if(_forkPid >= 0) // Fork was successful
+	{
+		// Check if we are a child process
+		if(_forkPid == 0)
+		{
+			// fork() always returns 0 in the child process
+			Child();
+		}
+		else
+		{
+			// We are the parent process
+			//Parent();
+		}
+	}
 
 	// END
-	sigprocmask(SIG_UNBLOCK, &maskAll, NULL); // Unblock all signals
 	return 0;
 }
+
+/*
+** SetupHandler(int, void*)
+
+* Sets a handler for the given signal using 
+	a pointer to a function.
+
+* int signum: The signal to have the given function handle.
+* void *funcPtr: A pointer to the function that will handle the signal.
+*/
+void SetupHandler(int signum, void (*funcPtr)(int))
+{
+	struct sigaction act;
+	sigset_t signalMask;
+
+	sigfillset(&act.sa_mask); // Block all signals while in handler
+	act.sa_flags = SA_RESTART; // Restart system calls
+	act.sa_handler = funcPtr;
+	if(sigaction(signum, &act, NULL) != 0)
+	{
+		fprintf(stderr, "%s%d\n", "Couldn't setup handler for: ", signum);
+		perror("");
+		exit(1);
+	}
+	// Now that we have a handler for the signal, we'll unblock it
+	sigemptyset(&signalMask); // Empty the set
+	sigaddset(&signalMask, signum); // Add the signal to unblock
+	sigprocmask(SIG_UNBLOCK, &signalMask, NULL); // Unblock 
+}
+
+/*
+** OnCtrlC(int)
+
+* Handles the SIGINT event. Calls kill on the child
+	and then on the parent.
+
+* int signum: The signal's id number.
+*/
+void OnCtrlC(int signum)
+{
+	char *childMsg = "Child - Ctrl-c\n";
+	char *parentMsg = "Parent - Ctrl-c\n";
+
+	if(_forkPid == 0)
+		write(STDERR_FILENO, childMsg, strlen(childMsg));
+	else
+		write(STDERR_FILENO, parentMsg, strlen(parentMsg));
+}
+
 
 /** Parent Functions **/
 
@@ -66,7 +135,6 @@ int main()
 */
 void Child()
 {
-	struct sigaction act;
 	sigset_t maskAllUsr1;
 	sigset_t maskAllUsr2;
 
@@ -77,28 +145,13 @@ void Child()
 	sigdelset(&maskAllUsr2, SIGUSR2);
 
 	// Set up signal handlers
-	sigfillset(&act.sa_mask); // Block all signals while in signal handler
-	act.sa_flags = SA_RESTART;
-
 	// SIGUSR1
-	act.sa_handler = Child_onUsr1;
-	if(sigaction(SIGUSR1, &act, NULL) != 0)
-	{
-		perror("Couldn't setup signal handler: SIGUSR1");
-		exit(1);
-	}
+	SetupHandler(SIGUSR1, Child_onUsr1);
 	// SIGUSR2
-	act.sa_handler = Child_onUsr2;
-	if(sigaction(SIGUSR2, &act, NULL) != 0)
-	{
-		perror("Couldn't setup signal handler: SIGUSR2");
-		exit(1);
-	}
-
-	//
+	SetupHandler(SIGUSR2, Child_onUsr2);
 
 	// Print that child is running
-	printf("%s\n", "Child is running.\nWaiting for 'task start' signal from parent");
+	printf("\n%s\n", "Child is running.\nWaiting for 'task start' signal from parent");
 
 	// sigsuspend() to wait for SIGUSR1 from parent
 	if(_sigReceived == 0)
@@ -129,7 +182,7 @@ void Child()
 		sigsuspend(&maskAllUsr2);
 	else
 	{
-		fprintf(stderr, "%s\n", "_sigReceived != 0: SIGUSR1");
+		fprintf(stderr, "%s\n", "_sigReceived != 0: SIGUSR2");
 		exit(1);
 	}
 	_sigReceived = 0; // Reset
