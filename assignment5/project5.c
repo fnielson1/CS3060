@@ -49,8 +49,7 @@ int main()
 	SetupHandler(SIGINT, OnCtrlC); // Handle SIGINT
 
 	// Start 
-	//_forkPid = fork(); // Returns once for the child and for parent process
-	_forkPid = 0; // DEBUG ONLY!
+	_forkPid = fork(); // Returns once for the child and for parent process
 	if(_forkPid >= 0) // Fork was successful
 	{
 		// Check if we are a child process
