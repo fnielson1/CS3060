@@ -19,13 +19,15 @@
 #define SLEEPTIME (3)
 
 void Child();
+void Parent();
 void SetupHandler(int, void(*)(int));
 
 // Signal handlers
 void OnCtrlC(int);
 void Child_onUsr1(int);
 void Child_onUsr2(int);
-
+void Parent_onUsr1(int);
+void Parent_onUsr2(int);
 
 /*
 * Set to '1' while in signal handler to avoid race conditions with
@@ -40,8 +42,10 @@ pid_t _forkPid = -1;
 /**/
 int main()
 {
-	sigset_t maskAll; // All bits are set
+	// print out student info here
 
+	sigset_t maskAll; // All bits are set
+	
 	// Block all signals (handlers aren't set up yet)
 	sigfillset(&maskAll);
 	sigprocmask(SIG_BLOCK, &maskAll, NULL);
@@ -61,7 +65,7 @@ int main()
 		else
 		{
 			// We are the parent process
-			//Parent();
+			Parent();
 		}
 	}
 
@@ -120,6 +124,94 @@ void OnCtrlC(int signum)
 
 /** Parent Functions **/
 
+/*********************************************************
+*
+*	Func: void Parent()
+*	Desc: handles signals to and from a child process
+*	Param: None
+*	Return: None
+*
+*********************************************************/
+void Parent()
+{
+	// just letting everyone know
+	printf("Child process has been created.\n");
+
+	// giving the child some time to grow
+	sleep(3);
+
+	// setting up sigsets
+	sigset_t maskAllUsr1;
+	sigset_t maskAllUsr2;
+
+	// blocking all signals and then unblocking SIGUSR1 and SIGUSR2
+	sigfillset( &maskAllUsr1 );
+	sigfillset( &maskAllUsr2 );
+	sigdelset( &maskAllUsr1, SIGUSR1 );
+	sigdelset( &maskAllUsr2, SIGUSR2 );
+
+	// setting up signal handlers
+	SetupHandler( SIGUSR1, Parent_onUsr1 );
+	SetupHandler( SIGUSR2, Parent_onUsr2 );
+
+	// sedning SIGUSR1 to child
+	printf("Start the child working.\n");
+	kill(_forkPid, SIGUSR1);
+	if( _sigReceived == 0 )
+		sigsuspend(&maskAllUsr1);
+	else
+		//error
+	
+	_sigReceived = 0; 	// resetting 
+	sleep(3);
+
+	// sending SIGUSR2 to child
+	printf("Sending SIGUSR2...\n");
+	kill(_forkPid, SIGUSR2);
+	if( _sigReceived == 0 )
+		sigsuspend( &maskAllUsr2 );
+	else
+		// error
+
+	_sigReceived = 0;
+
+	printf("Terminating...\n");
+	exit(1);
+}
+
+/************************************************************
+*
+*	Func: Parent_onUsr1
+*	Desc: Handles any SIGUSR1 signals sent to this process
+*	Param: The signal 
+*	Return: None
+*
+*************************************************************/
+void Parent_onUsr1( int sig )
+{
+	_sigReceived = 1;
+	
+	char *msg = "**** Parent SIGUSR1 handler - handler - Recieved a 'task started' signal from child ****\n";
+
+	write( STDERR_FILENO, msg, strlen(msg) );
+}
+
+/***************************************************************
+*
+*	Func: Parent_onUsr2
+*	Desc: Handles any SIGUSR2 signals sent to this process
+*	Param: The signal
+*	Return: None
+*
+***************************************************************/
+void Parent_onUsr2( int sig )
+{
+	_sigReceived = 1;
+
+	char *msg = "**** Parent SIGUSR2 handler - Received a 'task completed' signal from the child ****\n";
+
+	write( STDERR_FILENO, msg, strlen(msg) );
+}
 
 /** Child functions **/
 
