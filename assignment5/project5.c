@@ -17,6 +17,8 @@
 #include <unistd.h> // write()
 
 #define SLEEPTIME (3)
+#define ERR_SIGUSR1 ("_sigReceived != 0: SIGUSR1")
+#define ERR_SIGUSR2 ("_sigReceived != 0: SIGUSR2")
 
 void Child();
 void Parent();
@@ -121,6 +123,20 @@ void OnCtrlC(int signum)
 		write(STDERR_FILENO, parentMsg, strlen(parentMsg));
 }
 
+/*
+** Error(const char*)
+
+* When an error occurs, call this to print the 
+	message desired and exit.
+
+* const char *msg: The message to print.
+*/
+void Error(const char *msg)
+{
+	fprintf(stderr, "%s\n", msg);
+	exit(1);
+}
+
 
 /** Parent Functions **/
 
@@ -135,7 +151,7 @@ void OnCtrlC(int signum)
 void Parent()
 {
 	// just letting everyone know
-	printf("Child process has been created.\n");
+	printf("%s", "Parent - Child process has been created.\n");
 
 	// giving the child some time to grow
 	sleep(SLEEPTIME);
@@ -155,28 +171,27 @@ void Parent()
 	SetupHandler( SIGUSR2, Parent_onUsr2 );
 
 	// sedning SIGUSR1 to child
-	printf("Start the child working.\n");
+	printf("%s", "Parent - Start the child working.\n");
 	kill(_forkPid, SIGUSR1);
 	if( _sigReceived == 0 )
 		sigsuspend(&maskAllUsr1);
 	else
-		//error
+		Error(ERR_SIGUSR1);
 	
 	_sigReceived = 0; 	// resetting 
-	sleep(3);
+	sleep(SLEEPTIME);
 
 	// sending SIGUSR2 to child
-	printf("Sending SIGUSR2...\n");
+	printf("%s", "Parent - Sending SIGUSR2...\n");
 	kill(_forkPid, SIGUSR2);
 	if( _sigReceived == 0 )
 		sigsuspend( &maskAllUsr2 );
 	else
-		// error
+		Error(ERR_SIGUSR2);
 
 	_sigReceived = 0;
 
-	printf("Terminating...\n");
-	exit(1);
+	printf("%s", "Parent - Terminating...\n");
 }
 
 /************************************************************
@@ -242,46 +257,40 @@ void Child()
 	SetupHandler(SIGUSR2, Child_onUsr2);
 
 	// Print that child is running
-	printf("\n%s\n", "Child is running.\nWaiting for 'task start' signal from parent");
+	printf("\n%s\n\n", "Child - Child is running.\nWaiting for 'task start' signal from parent.");
 
 	// sigsuspend() to wait for SIGUSR1 from parent
 	if(_sigReceived == 0)
 		sigsuspend(&maskAllUsr1);
 	else
-	{
-		fprintf(stderr, "%s\n", "_sigReceived != 0: SIGUSR1");
-		exit(1);
-	}
+		Error(ERR_SIGUSR1);
 	_sigReceived = 0; // Reset as the signal is over
 
 	// Print message and notify parent that child is starting
-	printf("%s\n", "Notifying parent - Starting task");
+	printf("%s\n", "Child - Notifying parent that I'm starting my task.");
 	sleep(SLEEPTIME); // Give parent time to set up for signal
-	//kill(getppid(), SIGUSR1); // Send signal to parent
+	kill(getppid(), SIGUSR1); // Send signal to parent
 	
 	// Have child do some work
 	int count = 0;
 	while(count++ < SLEEPTIME)
 	{
-		printf("WORKING - %d\n", count);
+		printf("Child - WORKING HARD: %d\n", count);
 	}
 
 	// Print that we are done working
-	printf("%s\n", "Done working!");
+	printf("%s\n\n", "Child - Done working! Waiting for SIGUSR2 from parent.");
 	// Wait for SIGUSR2
 	if(_sigReceived == 0)
 		sigsuspend(&maskAllUsr2);
 	else
-	{
-		fprintf(stderr, "%s\n", "_sigReceived != 0: SIGUSR2");
-		exit(1);
-	}
+		Error(ERR_SIGUSR2);
 	_sigReceived = 0; // Reset
 
 	// Print that we're gonna tell parent we are done with work
-	printf("%s\n", "Notifying parent that our work is done.");
-	//kill(getppid(), SIGUSR2);
-	printf("%s\n", "Termination is imminent!"); // Print we're done
+	printf("%s\n\n", "Child - Notifying parent that our work is done.");
+	kill(getppid(), SIGUSR2);
+	printf("%s\n\n", "Child - Termination is imminent!"); // Print we're done
 }
 
 /*
