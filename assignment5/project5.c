@@ -138,7 +138,7 @@ void Parent()
 	printf("Child process has been created.\n");
 
 	// giving the child some time to grow
-	sleep(3);
+	sleep(SLEEPTIME);
 
 	// setting up sigsets
 	sigset_t maskAllUsr1;
