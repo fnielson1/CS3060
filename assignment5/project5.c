@@ -45,7 +45,7 @@ pid_t _forkPid = -1;
 int main()
 {
 	// print out student info here
-
+	printf("Frank Nielson and Caleb Kruger\nCS 3060-001 Project 5\n");
 	sigset_t maskAll; // All bits are set
 	
 	// Block all signals (handlers aren't set up yet)
