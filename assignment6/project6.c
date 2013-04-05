@@ -22,9 +22,10 @@
 #define PRINT_FOOTER (2)
 
 
+void FirstCome(const int*, const int*, const int*, const int);
+void ShortestNext(const int*, const int*, const int*, const int);
 void Print(int, int, int, int);
 void InputToArray(char*,int*, int*, int*);
-void FirstCome(const int*, const int*, const int*, const int);
 int StrToInt(char*);
 
 
@@ -47,8 +48,223 @@ int main()
 		InputToArray(input, arrPid, arrArrival, arrService);
 	}
 	// Call function to print the 3 arrays
-	FirstCome(arrPid, arrArrival, arrService, _pidIndex);
+	//FirstCome(arrPid, arrArrival, arrService, _pidIndex);
+	
+	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
 	return 0;
+}
+
+
+/*
+** FirstCome
+
+* Takes 3 arrays that simulate jobs entering the
+	waiting queue. It then 'runs' each of the jobs,
+	keeping track of various calculations.
+
+* const int* arrPid: The PIDs of the jobs.
+* const int* arrArrival: The time that the job 
+	arrived on the ready list.
+* const int* arrService: How long the job will 
+	take to complete.
+* const int jobNum: The length of the job list (array length).
+*/
+void FirstCome(const int* arrPid, const int*  arrArrival, 
+	const int* arrService, const int jobNum)
+{
+	/*
+	Calculate:
+    1. The wait time for each process
+    2. The turnaround time for each process
+    3. The average wait time for all processes given to the simulation
+    4. The average turnaround time for all processes given to the simulation
+	*/
+
+	int curPid = 0;
+	int curArrivalTime = 0;
+	int curServiceTime = 0;
+	int curWaitTime = 0;
+	int curTurnaroundTime = 0;
+	int index = 0;
+
+	int currentTime = 0; // Keeps track of the time 
+	int totalWaitTime = 0; // Total wait time for all the jobs
+	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	int avgWaitTime = 0; // The average wait time
+	int avgTurnaroundTime = 0; // The average turnaround time
+
+	// Print which function is running
+	printf("%s\n", "First Come First Serve");
+
+	// Loop through each job, calculating everything
+	for(index = 0; index < jobNum; ++index)
+	{
+		// Wait time = how long process is waiting until first run.
+		// Turnaround time = time from process first enters ready-state
+		// 	till he exits the running state for the last time.
+		curPid = arrPid[index];
+		curArrivalTime = arrArrival[index];
+		curServiceTime = arrService[index];
+
+		if(curArrivalTime > currentTime)
+			currentTime = curArrivalTime; // Simulate us waiting for the job
+
+		// Calculate the wait time
+		curWaitTime = abs(curArrivalTime - currentTime);
+		// Calculate the turnaround time
+		curTurnaroundTime = curWaitTime + curServiceTime;
+		// Increment our current time by how the the process ran (service time)
+		currentTime += curServiceTime; // Non-preemtive, service time = run time
+		totalWaitTime += curWaitTime;
+		totalTurnaroundTime += curTurnaroundTime;
+
+		// Print the PID, wait time, and turnaround time for the job
+		if(index == 0)
+			Print(curPid, curWaitTime, curTurnaroundTime, PRINT_HEADER);
+		else
+			Print(curPid, curWaitTime, curTurnaroundTime, PRINT_NORMAL);
+	}
+	// Print the Average wait time and turnaround time for all the jobs
+	avgWaitTime = totalWaitTime / jobNum;
+	avgTurnaroundTime = totalTurnaroundTime / jobNum;
+	Print(0, avgWaitTime, avgTurnaroundTime, PRINT_FOOTER);
+}
+
+/*
+** ShortestNext
+
+* Simulates a scheduler that uses the Shortest 
+	Remaining Time Next algorithim.
+
+* const int* arrPid: The PIDs of the jobs.
+* const int* arrArrival: The time that the job 
+	arrived on the ready list.
+* const int* arrService: How long the job will 
+	take to complete.
+* const int jobNum: The length of the job list (array length).
+*/
+void ShortestNext(const int* arrPid, const int*  arrArrival, 
+	const int* arrService, const int jobNum)
+{
+	int curPid = 0;
+	int curArrivalTime = 0;
+	int curJobIndex = 0;
+	int curWaitTime = 0;
+	int curTurnaroundTime = 0;
+	int isFirstLoop = 1;	// Whether this is our first loop or not
+	int allJobsDone = 0; 	// Whether all the jobs are done or not
+
+	int currentTime = 0; 	// Keeps track of the time 
+	int totalWaitTime = 0; 	// Total wait time for all the jobs
+	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	int avgWaitTime = 0; 	// The average wait time
+	int avgTurnaroundTime = 0; // The average turnaround time
+
+	int arrTimeLeft[jobNum]; // The time left for a specific job
+	int arrWaitTime[jobNum]; // The wait time for a specific job
+	memcpy(arrTimeLeft, arrService, jobNum); // Copy the service time to our array
+
+	// Print the function that is running
+	printf("%s\n", "Shortest Time Remaining Time");
+
+	// Loop through each Job
+	while(1)
+    {
+        // Wait time = how long process is waiting until first run.
+        // Turnaround time = time from process first enters ready-state
+        //  till he exits the running state for the last time.
+		curArrivalTime = arrArrival[curJobIndex];
+
+        // Check if the job has arrived
+        if(curArrivalTime <= currentTime)
+        {
+			// Calculate the wait time for the job if this is its first time run
+			if(arrTimeLeft[curJobIndex] == arrService[curJobIndex])
+				arrWaitTime[curJobIndex] = abs(curArrivalTime - currentTime);
+
+            // The job has arrived. Run it for 1 ms
+			++currentTime; // 1 ms has passed
+			arrTimeLeft[curJobIndex]--;
+
+			// Check if the job has completed. If so, print.
+			if(arrTimeLeft[curJobIndex] == 0)
+			{
+				// turnaround time is the current time minus our arrival time 
+				// plus how long we had to wait in the queue the first time.
+				curPid = arrPid[curJobIndex];
+				curWaitTime = arrWaitTime[curJobIndex];
+				curTurnaroundTime = curWaitTime + (currentTime - curArrivalTime);
+				totalWaitTime += curWaitTime;
+				totalTurnaroundTime += curTurnaroundTime;
+
+				// Print the PID, wait time, and turnaround time for the job
+				if(isFirstLoop == 1)
+				{
+					Print(curPid, curWaitTime, curTurnaroundTime, PRINT_HEADER);
+					isFirstLoop = 1;
+				}
+				else
+					Print(curPid, curWaitTime, curTurnaroundTime, PRINT_NORMAL);
+			}
+
+			// See if there is another job with a shorter service time
+			int i;
+			for(i = 0; i < jobNum; ++i)
+			{
+				// Make sure if a job isn't already 'done'
+				if(arrTimeLeft[i] == 0)
+				{
+					allJobsDone = 1; // There is a chance there are no more jobbs
+					continue;
+				}
+
+				if(arrTimeLeft[i] < arrTimeLeft[curJobIndex] &&
+					arrArrival[i] <= currentTime)
+				{
+					// Another job is shorter and it's arrived.
+					curJobIndex = i; // Change the current job
+					allJobsDone = 0; // There are still more jobs to do
+					break;
+				}
+			}
+			if(allJobsDone)
+				break; // All the jobs are done
+        } // END ARRIVAL CHECK
+		else
+	        ++currentTime; // 1 ms has passed
+    }
+	// Print the Average wait time and turnaround time for all the jobs
+	avgWaitTime = totalWaitTime / jobNum;
+	avgTurnaroundTime = totalTurnaroundTime / jobNum;
+	Print(0, avgWaitTime, avgTurnaroundTime, PRINT_FOOTER);
+}
+
+/*
+** Print
+
+* Prints the job PID, how much time he waited to
+	start, and the turnaround time.
+
+* int header: Whether to print the header or not.
+* int pid: The PID of the job.
+* int waitTime: How long the job was in the read queue.
+* int turnaroundTime: Total time from first ready to done running.
+*/
+void Print(int pid, int waitTime, int turnaroundTime, int header)
+{
+	char *format = "%-15d %-15d %-15d \n"; // How to format the printing
+	char *headerFormat = "%-15s %-15s %-15s \n"; 
+	char *footerFormat = "\n%-20s %-20s \n";
+
+	if(header == PRINT_HEADER)
+		printf(headerFormat, "Process ID", "Wait Time", "Turnaround Time");
+	if(header == PRINT_FOOTER)
+	{
+		printf(footerFormat, "Average Wait Time", "Average Turnaround Time");
+		printf("%-20d %-20d \n\n\n", waitTime, turnaroundTime);
+		return; // Don't print the normal data
+	}	
+	printf(format, pid, waitTime, turnaroundTime);
 }
 
 /*
@@ -117,104 +333,3 @@ int StrToInt(char *buffer)
 	}
 	return number;
 }
-
-/*
-** FirstCome
-
-* Takes 3 arrays that simulate jobs entering the
-	waiting queue. It then 'runs' each of the jobs,
-	keeping track of various calculations.
-
-* const int* arrPid: The PIDs of the jobs.
-* const int* arrArrival: The time that the job 
-	arrived on the ready list.
-* const int* arrService: How long the job will 
-	take to complete.
-* const int jobNum: The length of the job list (arrays).
-*/
-void FirstCome(const int* arrPid, const int*  arrArrival, 
-	const int* arrService, const int jobNum)
-{
-	/*
-	Calculate:
-    1. The wait time for each process
-    2. The turnaround time for each process
-    3. The average wait time for all processes given to the simulation
-    4. The average turnaround time for all processes given to the simulation
-	*/
-
-	int curPid = 0;
-	int curArrivalTime = 0;
-	int curServiceTime = 0;
-	int curWaitTime = 0;
-	int curTurnaroundTime = 0;
-	int index = 0;
-
-	int currentTime = 0; // Keeps track of the time 
-	int totalWaitTime = 0; // Total wait time for all the jobs
-	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
-	int avgWaitTime = 0; // The average wait time
-	int avgTurnaroundTime = 0; // The average turnaround time
-
-	// Print which function is running
-	printf("%s\n", "First Come First Serve");
-
-	// Loop through each job, calculating everything
-	for(index = 0; index < jobNum; ++index)
-	{
-		// Wait time = how long process is waiting until first run.
-		// Turnaround time = time from process  first enters ready-state
-		// 	till he exits the running state for the last time.
-		curPid = arrPid[index];
-		curArrivalTime = arrArrival[index];
-		curServiceTime = arrService[index];
-
-		// Calculate the wait time
-		curWaitTime = abs(curArrivalTime - currentTime);
-		// Calculate the turnaround time
-		curTurnaroundTime = curWaitTime + curServiceTime;
-		// Increment our current time by how the the process ran (service time)
-		currentTime += curServiceTime; // Non-preemtive, service time = run time
-		totalWaitTime += curWaitTime;
-		totalTurnaroundTime += curTurnaroundTime;
-
-		// Print the PID, wait time, and turnaround time for the job
-		if(index == 0)
-			Print(curPid, curWaitTime, curTurnaroundTime, PRINT_HEADER);
-		else
-			Print(curPid, curWaitTime, curTurnaroundTime, PRINT_NORMAL);
-	}
-	// Print the Average wait time and turnaround time for all the jobs
-	avgWaitTime = totalWaitTime / jobNum;
-	avgTurnaroundTime = totalTurnaroundTime / jobNum;
-	Print(0, avgWaitTime, avgTurnaroundTime, PRINT_FOOTER);
-}
-
-/*
-** Print
-
-* Prints the job PID, how much time he waited to
-	start, and the turnaround time.
-
-* int header: Whether to print the header or not.
-* int pid: The PID of the job.
-* int waitTime: How long the job was in the read queue.
-* int turnaroundTime: Total time from first ready to done running.
-*/
-void Print(int pid, int waitTime, int turnaroundTime, int header)
-{
-	char *format = "%-15d %-15d %-15d \n"; // How to format the printing
-	char *headerFormat = "%-15s %-15s %-15s \n"; 
-	char *footerFormat = "\n%-20s %-20s \n";
-
-	if(header == PRINT_HEADER)
-		printf(headerFormat, "Process ID", "Wait Time", "Turnaround Time");
-	if(header == PRINT_FOOTER)
-	{
-		printf(footerFormat, "Average Wait Time", "Average Turnaround Time");
-		printf("%-20d %-20d \n", waitTime, turnaroundTime);
-		return; // Don't print the normal data
-	}	
-	printf(format, pid, waitTime, turnaroundTime);
-}
-
