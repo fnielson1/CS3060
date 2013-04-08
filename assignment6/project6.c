@@ -24,6 +24,8 @@
 
 void FirstCome(const int*, const int*, const int*, const int);
 void ShortestNext(const int*, const int*, const int*, const int);
+int GetShortestServiceJob(const int*, const int*, const int, 
+	const int, const int, int*);
 void Print(int, int, int, int);
 void InputToArray(char*,int*, int*, int*);
 int StrToInt(char*);
@@ -173,6 +175,13 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
         // Wait time = how long process is waiting until first run.
         // Turnaround time = time from process first enters ready-state
         //  till he exits the running state for the last time.
+		
+		// Get the shortest job to work on
+		curJobIndex = GetShortestServiceJob(arrArrival, arrTimeLeft, curJobIndex,
+			currentTime, jobNum, &allJobsDone);
+		if(allJobsDone)
+			break; // All the jobs are done
+
 		curArrivalTime = arrArrival[curJobIndex];
 
         // Check if the job has arrived
@@ -198,37 +207,14 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 				totalTurnaroundTime += curTurnaroundTime;
 
 				// Print the PID, wait time, and turnaround time for the job
-				if(isFirstLoop == 1)
+				if(isFirstLoop)
 				{
 					Print(curPid, curWaitTime, curTurnaroundTime, PRINT_HEADER);
-					isFirstLoop = 1;
+					isFirstLoop = 0;
 				}
 				else
 					Print(curPid, curWaitTime, curTurnaroundTime, PRINT_NORMAL);
 			}
-
-			// See if there is another job with a shorter service time
-			int i;
-			for(i = 0; i < jobNum; ++i)
-			{
-				// Make sure if a job isn't already 'done'
-				if(arrTimeLeft[i] == 0)
-				{
-					allJobsDone = 1; // There is a chance there are no more jobbs
-					continue;
-				}
-
-				if(arrTimeLeft[i] < arrTimeLeft[curJobIndex] &&
-					arrArrival[i] <= currentTime)
-				{
-					// Another job is shorter and it's arrived.
-					curJobIndex = i; // Change the current job
-					allJobsDone = 0; // There are still more jobs to do
-					break;
-				}
-			}
-			if(allJobsDone)
-				break; // All the jobs are done
         } // END ARRIVAL CHECK
 		else
 	        ++currentTime; // 1 ms has passed
@@ -237,6 +223,51 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 	avgWaitTime = totalWaitTime / jobNum;
 	avgTurnaroundTime = totalTurnaroundTime / jobNum;
 	Print(0, avgWaitTime, avgTurnaroundTime, PRINT_FOOTER);
+}
+
+/*
+** GetShortestServiceJob
+
+* Returns the job index of the job that has the 
+	shortest remaining service time.
+
+* const int* arrArrival: The array that has the arrival times
+	of the jobs.
+* const int* arrTimeLeft: The array that has the remaining 
+	service times of the jobs.
+* const int curJobIndex: The index of the current job 
+	that is running.
+* const int currentTime: The current time (in ms).
+* int* allJobsDone: If this is changed to a 1, than all the 
+	jobs have been done.
+*/
+int GetShortestServiceJob(const int *arrArrival, const int *arrTimeLeft, 
+	const int curJobIndex, const int currentTime, const int jobNum, 
+	int *allJobsDone)
+{
+	int newJobIndex = curJobIndex;
+
+	// See if there is another job with a shorter service time
+	int i;
+	for(i = 0; i < jobNum; ++i)
+	{
+		// Make sure if a job isn't already 'done'
+		if(arrTimeLeft[i] == 0)
+		{
+			*allJobsDone = 1; // There is a chance there are no more jobs
+			continue;
+		}
+
+		if(arrTimeLeft[i] < arrTimeLeft[curJobIndex] &&
+			arrArrival[i] <= currentTime)
+		{
+			// Another job is shorter and it's arrived.
+			newJobIndex = i; // Change the current job
+			*allJobsDone = 0; // There are still more jobs to do
+			break;
+		}
+	}
+	return newJobIndex; // If no new job is found, return the current one
 }
 
 /*
