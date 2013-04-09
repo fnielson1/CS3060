@@ -164,7 +164,7 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 
 	int arrTimeLeft[jobNum]; // The time left for a specific job
 	int arrWaitTime[jobNum]; // The wait time for a specific job
-	memcpy(arrTimeLeft, arrService, jobNum); // Copy the service time to our array
+	memcpy(arrTimeLeft, arrService, jobNum * sizeof(int)); // Copy the service time to our array
 
 	// Print the function that is running
 	printf("%s\n", "Shortest Time Remaining Time");
@@ -217,7 +217,7 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 			}
         } // END ARRIVAL CHECK
 		else
-	        ++currentTime; // 1 ms has passed
+	        ++currentTime; // No jobs have arrived. Wait for 1 ms.
     }
 	// Print the Average wait time and turnaround time for all the jobs
 	avgWaitTime = totalWaitTime / jobNum;
@@ -245,20 +245,39 @@ int GetShortestServiceJob(const int *arrArrival, const int *arrTimeLeft,
 	const int curJobIndex, const int currentTime, const int jobNum, 
 	int *allJobsDone)
 {
+	int i = 0;
 	int newJobIndex = curJobIndex;
+	int jobsExist = 0;
+
+	// If the current job has a time of 0 (it's done),
+	// find another job that might be the shortest one.
+	if(arrTimeLeft[curJobIndex] == 0)
+	{
+		for(i = 0; i < jobNum; ++i)
+		{
+			if(arrTimeLeft[i] != 0 && arrArrival[i] <= currentTime)
+			{
+				newJobIndex = i;
+				jobsExist = 1; // A new job was found. 
+				break;
+			}
+		}
+	}
+	else
+		jobsExist = 1; // Our current job is still good
 
 	// See if there is another job with a shorter service time
-	int i;
 	for(i = 0; i < jobNum; ++i)
 	{
 		// Make sure if a job isn't already 'done'
 		if(arrTimeLeft[i] == 0)
 		{
-			*allJobsDone = 1; // There is a chance there are no more jobs
+			if(jobsExist == 0)
+				*allJobsDone = 1; // There is a chance there are no more jobs
 			continue;
 		}
-
-		if(arrTimeLeft[i] < arrTimeLeft[curJobIndex] &&
+		
+		if(arrTimeLeft[i] < arrTimeLeft[newJobIndex] &&
 			arrArrival[i] <= currentTime)
 		{
 			// Another job is shorter and it's arrived.
