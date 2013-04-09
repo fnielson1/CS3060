@@ -161,7 +161,7 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 	memcpy( pService, service, jobNumber * sizeof( int ) );
 	
 	printf( "Shortest Job First\n" );
-	Print(0,0,0, PRINT_HEADER);
+	//Print Header
 	// loop through all the jobs
 	for( counter; counter < jobNumber; counter++ )
 	{
@@ -169,21 +169,25 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 		if( pService[counter] == 0 )
 			continue;
 		minProcess = pid[counter];
-		// finding the shortest job	
+		// finding the shortest job
 		for( i; i < jobNumber; i++ )
 		{
+			// checking to see if it's already been run
+			if( pService[i] == 0 )
+				continue;
 			if( pService[i] < pService[minProcess - 1] && ( pArrival[i] <= timeTotal ) )
 				minProcess = pid[i];
 		}
 		// adding the time it took to do the job
-		timeTotal += pService[minProcess - 1];
-		pService[minProcess - 1] = 0;	// zeroing out it's service time because it's done
 	 	if( pArrival[minProcess - 1] != 0 && pArrival[minProcess - 1] < timeTotal )
 			waitTime = timeTotal - pArrival[minProcess - 1];
 		else
 			waitTime = 0;
 		turnAroundTime = waitTime + pService[minProcess - 1];
+		timeTotal = timeTotal + pService[minProcess - 1];
+		pService[minProcess - 1] = 0;	// zeroing out it's service time because it's done
 		Print( minProcess, waitTime, turnAroundTime, PRINT_NORMAL );
+		i = 0;	//reseting counter
 	}
 }
 /*
