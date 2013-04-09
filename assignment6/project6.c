@@ -23,9 +23,11 @@
 
 
 void FirstCome(const int*, const int*, const int*, const int);
+void ShortestJobFirst( const int*, const int*, const int*, const int);
 void ShortestNext(const int*, const int*, const int*, const int);
 int GetShortestServiceJob(const int*, const int*, const int, 
 	const int, const int, int*);
+void RoundRobin(const int*, const int*, const int*, const int*);
 void Print(int, int, int, int);
 void InputToArray(char*,int*, int*, int*);
 int StrToInt(char*);
@@ -52,6 +54,9 @@ int main()
 	// Call function to print the 3 arrays
 	//FirstCome(arrPid, arrArrival, arrService, _pidIndex);
 	
+	// Calling ShortestJobFirst
+	ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
+	//RoundRobin();
 	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
 	return 0;
 }
@@ -132,6 +137,55 @@ void FirstCome(const int* arrPid, const int*  arrArrival,
 	Print(0, avgWaitTime, avgTurnaroundTime, PRINT_FOOTER);
 }
 
+/**********************************************************************
+* Func: ShortestJobFirst
+* Desc: From a list of jobs does the one which will complete
+*	    quickest first
+* Param: the process ID, when it arrived, the time for it to complete,
+*	     the number of jobs it has to complete
+* Rtrn: None
+***********************************************************************/
+void ShortestJobFirst( const int* pid, const int* arrival, const int* service, const int jobNumber )
+{
+	int pArrival[jobNumber];
+	int pService[jobNumber];
+	int timeTotal = 0;
+	int minProcess = 0;
+	int counter = 0;
+	int i = 0;
+	int waitTime = 0;
+	int turnAroundTime = 0; // wait time + service time
+	
+	// copying arrays in case they need to be modified
+	memcpy( pArrival, arrival, jobNumber * sizeof( int ) );
+	memcpy( pService, service, jobNumber * sizeof( int ) );
+	
+	printf( "Shortest Job First\n" );
+	Print(0,0,0, PRINT_HEADER);
+	// loop through all the jobs
+	for( counter; counter < jobNumber; counter++ )
+	{
+		// checking to see if the job as already been processed
+		if( pService[counter] == 0 )
+			continue;
+		minProcess = pid[counter];
+		// finding the shortest job	
+		for( i; i < jobNumber; i++ )
+		{
+			if( pService[i] < pService[minProcess - 1] && ( pArrival[i] <= timeTotal ) )
+				minProcess = pid[i];
+		}
+		// adding the time it took to do the job
+		timeTotal += pService[minProcess - 1];
+		pService[minProcess - 1] = 0;	// zeroing out it's service time because it's done
+	 	if( pArrival[minProcess - 1] != 0 && pArrival[minProcess - 1] < timeTotal )
+			waitTime = timeTotal - pArrival[minProcess - 1];
+		else
+			waitTime = 0;
+		turnAroundTime = waitTime + pService[minProcess - 1];
+		Print( minProcess, waitTime, turnAroundTime, PRINT_NORMAL );
+	}
+}
 /*
 ** ShortestNext
 
@@ -202,7 +256,7 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 				// plus how long we had to wait in the queue the first time.
 				curPid = arrPid[curJobIndex];
 				curWaitTime = arrWaitTime[curJobIndex];
-				curTurnaroundTime = curWaitTime + (currentTime - curArrivalTime);
+				curTurnaroundTime = currentTime - (curWaitTime + curArrivalTime);
 				totalWaitTime += curWaitTime;
 				totalTurnaroundTime += curTurnaroundTime;
 
