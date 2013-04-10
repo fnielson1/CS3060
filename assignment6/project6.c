@@ -56,8 +56,8 @@ int main()
 	
 	// Calling ShortestJobFirst
 	ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
-	//RoundRobin();
 	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
+	//RoundRobin();
 	return 0;
 }
 
