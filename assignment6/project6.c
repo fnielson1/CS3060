@@ -52,10 +52,10 @@ int main()
 		InputToArray(input, arrPid, arrArrival, arrService);
 	}
 	// Call function to print the 3 arrays
-	//FirstCome(arrPid, arrArrival, arrService, _pidIndex);
-	//ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
+	FirstCome(arrPid, arrArrival, arrService, _pidIndex);
+	ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
 	RoundRobin( arrPid, arrArrival, arrService, _pidIndex );
-	//ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
+	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
 	
 	return 0;
 }
@@ -363,39 +363,93 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	double timeTotal = 0.0;
 	double waitTime = 0.0;
 	double turnAroundTime = 0.0;
+	int toProcessNext[jobNumber];	// array to hold queue processes
+	int stillRunning = 0;	// keeps track if the process still needs to run
+	int completionTime[jobNumber];	// keeps track of how long a process takes to complete
+	int processWaitTime[jobNumber];	// keepts track of how long each process waits time is
+	int toProcess = 0;		// the next process ready to run
 	int next = 0;
+	int nextRunning = 0;
 	int counter = 0;
 	int timeSlice = 4;
+	int toFinish = jobNumber;	// remaining processes
 
 	// copying service into pService for editing
 	memcpy( pService, service, jobNumber * sizeof(int) );
-	// initializing priority array
-	for( counter; counter < jobNumber; counter++ )
-		priority[jobNumber] = 0;
+	// initializing  arrays
+	for( counter; counter < jobNumber; counter++ ){
+		priority[counter] = 0;
+		toProcessNext[counter] = -1;
+		completionTime[counter] = 0;
+		processWaitTime[counter] = 0;
+	}
 	counter = 0;	// resetting counter
 
 	// No contextSwitching
 
 	// loop until all jobs are finished
-	for( counter; counter < jobNumber; counter++ )
+	while( toFinish != 0 )
 	{
-		// check to see if the job will finish in the timeslice
-		if( pService[counter] - timeSlice <= 0 ){
-			timeTotal = timeTotal + pService[counter];
-			
-			// calculating the wait time
-			if( arrival[counter] == 0 )
-				waitTime = 0;
-			else if ( priority[counter] == 0 )
-				waitTime = timeTotal - arrival[counter];
-
-			turnAroundTime = waitTime + service[counter];
-			pService[counter] == 0;
+		// get all the processes that have arrived
+		// or have yet to be completed
+		// and store them in toProcessNext[]
+		while( arrival[next] <= timeTotal )	{
+			if( priority[next] != 0 ){
+				next++;
+				continue;
+			}
+			if( pService[next] == 0 ){
+				next++;
+				continue;
+			}
+			toProcessNext[next] = next;	
+			next++;
 		}
-		else{
-			pService[counter] = pService[counter] - timeSlice;
+
+		// check to see if there are any processes that 
+		// haven't been completed yet
+		if( stillRunning > 0 )
+			toProcessNext[next] = stillRunning - 1;
+		
+		next = 0;
+		// if no processes are ready
+		if( toProcessNext[next] < 0 ){
+			timeTotal++;
+			continue;
+		}
+
+		toProcess = toProcessNext[next];
+		// checking to see if the process has been run before and setting the wait time
+		if( priority[toProcess] != 1 )
+			processWaitTime[toProcess] = timeTotal - arrival[toProcess];
+
+		// check to see if the process will finish in the timeSlice
+		if( pService[toProcess] - timeSlice <= 0 ){
+			timeTotal = timeTotal + pService[toProcess];
+			turnAroundTime = processWaitTime[toProcess] + completionTime[toProcess];
+			
+			// remove and shift processes up in toProcessNext[]
+			while( toProcessNext[next] >= 0 ){
+				toProcessNext[next] = toProcessNext[next + 1];
+				next++;
+			}
+			next = 0;	// resetting next
+
+			// setting process service time to zero because it's finished running
+			pService[toProcess] = 0;
+			toFinish = toFinish - 1;
+			Print( pid[toProcess], processWaitTime[toProcess], turnAroundTime, PRINT_NORMAL ); 
+		}
+		else {
 			timeTotal = timeTotal + timeSlice;
-			while( arrival[next] < timeTotal )
+			
+			// check to see if priority flag has been set
+			if( priority[toProcess] == 0 )
+				priority[toProcess] = 1;
+
+			// incrementing the time to complete
+			completionTime[toProcess] = completionTime[toProcess] + timeSlice;
+			stillRunning = pid[toProcess];
 		}
 	}
 
