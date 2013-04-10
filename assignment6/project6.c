@@ -27,7 +27,7 @@ void ShortestJobFirst( const int*, const int*, const int*, const int);
 void ShortestNext(const int*, const int*, const int*, const int);
 int GetShortestServiceJob(const int*, const int*, const int, 
 	const int, const int, int*);
-void RoundRobin(const int*, const int*, const int*, const int*);
+void RoundRobin(const int*, const int*, const int*, const int);
 void Print(int, int, int, int);
 void InputToArray(char*,int*, int*, int*);
 int StrToInt(char*);
@@ -53,11 +53,10 @@ int main()
 	}
 	// Call function to print the 3 arrays
 	//FirstCome(arrPid, arrArrival, arrService, _pidIndex);
+	//ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
+	RoundRobin( arrPid, arrArrival, arrService, _pidIndex );
+	//ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
 	
-	// Calling ShortestJobFirst
-	ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
-	//RoundRobin();
-	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
 	return 0;
 }
 
@@ -347,6 +346,62 @@ int GetShortestServiceJob(const int *arrArrival, const int *arrTimeLeft,
 	return newJobIndex; // If no new job is found, return the current one
 }
 
+/**********************************************************************
+* Func: RoundRobin()
+* Desc: Scheduling algorithm where each process is given a certain 
+*       amount of time before switching to the next process
+* Param: int array of processes, int array of their wait times,
+*        int array of their expected time to completion, and an int 
+*		 for the number of processes
+* Return: None
+********************************************************************/
+void RoundRobin( const int *pid, const int *arrival, const int *service, int jobNumber )
+{
+	int pService[jobNumber];
+	int priority[jobNumber];	// used to determine if a process has run before
+	double contextSwitch = .4;
+	double timeTotal = 0.0;
+	double waitTime = 0.0;
+	double turnAroundTime = 0.0;
+	int next = 0;
+	int counter = 0;
+	int timeSlice = 4;
+
+	// copying service into pService for editing
+	memcpy( pService, service, jobNumber * sizeof(int) );
+	// initializing priority array
+	for( counter; counter < jobNumber; counter++ )
+		priority[jobNumber] = 0;
+	counter = 0;	// resetting counter
+
+	// No contextSwitching
+
+	// loop until all jobs are finished
+	for( counter; counter < jobNumber; counter++ )
+	{
+		// check to see if the job will finish in the timeslice
+		if( pService[counter] - timeSlice <= 0 ){
+			timeTotal = timeTotal + pService[counter];
+			
+			// calculating the wait time
+			if( arrival[counter] == 0 )
+				waitTime = 0;
+			else if ( priority[counter] == 0 )
+				waitTime = timeTotal - arrival[counter];
+
+			turnAroundTime = waitTime + service[counter];
+			pService[counter] == 0;
+		}
+		else{
+			pService[counter] = pService[counter] - timeSlice;
+			timeTotal = timeTotal + timeSlice;
+			while( arrival[next] < timeTotal )
+		}
+	}
+
+	// With contextSwitching
+	
+}
 /*
 ** Print
 
