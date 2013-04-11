@@ -373,6 +373,7 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int counter;
 	int timeSlice = 4;
 	int toFinish = jobNumber;	// remaining processes
+	int inQueue;
 
 	// copying service into pService for editing
 	memcpy( pService, service, jobNumber * sizeof(int) );
@@ -393,23 +394,37 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 		// get all the processes that have arrived
 		// or have yet to be completed
 		// and store them in toProcessNext[]
-		for(next = 0; arrival[next] <= timeTotal; next++ ){	
+		for( next = 0; ( arrival[next] <= timeTotal ) && ( next < jobNumber ); next++ ){	
 			if( priority[next] != 0 )
 				continue;
 			
 			if( pService[next] == 0 )
 				continue;
+			
+			// already in queue
+			inQueue = 0;
 			while( toProcessNext[nextRunning] >= 0 ){
+				if( toProcessNext[nextRunning] == next ){
+					nextRunning = 0;
+					inQueue = 1;
+					break;
+				}
 				nextRunning++;
 			}
+			if( inQueue )
+				continue;
 			toProcessNext[nextRunning] = next;
 		}
 
 		// check to see if there are any processes that 
 		// haven't been completed yet
-		if( stillRunning > 0 )
-			toProcessNext[nextRunning + 1] = stillRunning - 1;
-		
+		next = 0;
+		if( stillRunning > 0 ){
+			while( toProcessNext[next] != -1 )
+				next++;
+			toProcessNext[next] = stillRunning - 1;
+			stillRunning = 0;
+		}
 		next = 0;
 		// if no processes are ready
 		if( toProcessNext[next] < 0 ){
@@ -419,17 +434,19 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 
 		toProcess = toProcessNext[next];
 		// checking to see if the process has been run before and setting the wait time
-		if( priority[toProcess] != 1 )
+		if( priority[toProcess] == 0 )
 			processWaitTime[toProcess] = timeTotal - arrival[toProcess];
 
 		// check to see if the process will finish in the timeSlice
 		if( pService[toProcess] - timeSlice <= 0 ){
 			timeTotal = timeTotal + pService[toProcess];
-			completionTime[toProcess] = completionTime[toProcess] + pService[toProcess];
+			completionTime[toProcess] += pService[toProcess];
 			turnAroundTime = processWaitTime[toProcess] + completionTime[toProcess];
 
 			// remove and shift processes up in toProcessNext[]
 			while( toProcessNext[next] >= 0 ){
+				if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] != 0 )
+					completionTime[toProcessNext[next + 1]] += pService[toProcess];
 				toProcessNext[next] = toProcessNext[next + 1];
 				next++;
 			}
@@ -438,12 +455,13 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 			// setting process service time to zero because it's finished running
 			pService[toProcess] = 0;
 			priority[toProcess] = 1;
+			nextRunning = 0;
 			toFinish = toFinish - 1;
 			Print( pid[toProcess], processWaitTime[toProcess], turnAroundTime, PRINT_NORMAL ); 
 		}
 		else {
 			timeTotal = timeTotal + timeSlice;
-			
+			pService[toProcess] = pService[toProcess] - timeSlice;
 			// check to see if priority flag has been set
 			if( priority[toProcess] == 0 )
 				priority[toProcess] = 1;
@@ -451,8 +469,11 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 			// incrementing the time to complete
 			completionTime[toProcess] = completionTime[toProcess] + timeSlice;
 			stillRunning = pid[toProcess];
+			nextRunning = 0;
 			// removing and shifting processes up in toProcessNext[]
 			while( toProcessNext[next] >= 0 ){
+				if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] == 1 )
+					completionTime[toProcessNext[next + 1]] += timeSlice;
 				toProcessNext[next] = toProcessNext[next + 1];
 				next++;
 			}
