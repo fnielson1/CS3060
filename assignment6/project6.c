@@ -144,61 +144,89 @@ void FirstCome(const int* arrPid, const int*  arrArrival,
 ***********************************************************************/
 void ShortestJobFirst( const int* pid, const int* arrival, const int* service, const int jobNumber )
 {
-	int pArrival[jobNumber];
 	int pService[jobNumber];
 	int timeTotal = 0;
 	int minProcess = 0;
-	int counter = 0;
-	int i = 0;
-	int waitTime = 0;
-	int turnAroundTime = 0; // wait time + service time
-	int totalWait = 0;
-	int totalTurnAround = 0;
+	int counter;
+	int tempMin;
+	double waitTime = 0;
+	double turnAroundTime = 0; // wait time + service time
+	double totalWait = 0;
+	double totalTurnAround = 0;
 	double aveWait = 0;
 	double aveTurnAround = 0;
+	int readyQueue[jobNumber];
+	int next = 0;
+	int process = 0;
+	int toFinish = jobNumber;
 
 	// copying arrays in case they need to be modified
-	memcpy( pArrival, arrival, jobNumber * sizeof( int ) );
 	memcpy( pService, service, jobNumber * sizeof( int ) );
-	
+	for( counter = 0; counter < jobNumber; counter++ )
+		readyQueue[counter] = -1;
+
 	printf( "Shortest Job First\n" );
 	//Print Header
 	// loop through all the jobs
-	for(; counter < jobNumber; counter++ )
+	while( toFinish > 0 )
 	{
-		// checking to see if the job as already been processed
-		if( pService[counter] == 0 )
-			continue;
-		minProcess = pid[counter];
-		// finding the shortest job
-		for(; i < jobNumber; i++ )
+		// loading ready queue
+		for( counter = 0; arrival[counter] <= timeTotal && counter < jobNumber; counter++ )
 		{
-			// checking to see if it's already been run
-			if( pService[i] == 0 )
+			// checking to see if the job as already been processed
+			if( pService[counter] == 0 )
 				continue;
-			if( pService[i] < pService[minProcess - 1] && ( pArrival[i] <= timeTotal ) )
-				minProcess = pid[i];
+			// finding first empty spot in readyQueue
+			readyQueue[next] = counter;
+			next++;
 		}
-		// adding the time it took to do the job
-	 	if( pArrival[minProcess - 1] != 0 && pArrival[minProcess - 1] < timeTotal )
-			waitTime = timeTotal - pArrival[minProcess - 1];
-		else
-			waitTime = 0;
-		
-		turnAroundTime = waitTime + pService[minProcess - 1];
-		timeTotal = timeTotal + pService[minProcess - 1];
+		next = 0;
+	
+		// nothing on ready queue
+		if( readyQueue[process] < 0 ){
+			timeTotal++;
+			continue;
+		}
+		minProcess = readyQueue[process];
+		// finding minService from readyQueue
+		while( readyQueue[process] >= 0 )
+		{
+			tempMin = readyQueue[process + 1];
+			
+			// shortest process has been found
+			if( tempMin == -1 )
+				break;
+			else if ( pService[tempMin] < pService[minProcess] ){
+				minProcess = tempMin;
+				process++;
+			}
+			else
+				process++;
+		}
+		process = 0;
+
+		// calculating time
+		waitTime = timeTotal - arrival[minProcess];
+		turnAroundTime = waitTime + pService[minProcess];
+		timeTotal = timeTotal + pService[minProcess];
 		totalWait += waitTime;
 		totalTurnAround += turnAroundTime;
-		pService[minProcess - 1] = 0;	// zeroing out it's service time because it's done
+		pService[minProcess] = 0;	// zeroing out it's service time because it's done
 		
-
-		Print( minProcess, waitTime, turnAroundTime, PRINT_NORMAL );
-		i = 0;	//reseting counter
-	}
-		aveWait = ( totalWait / jobNumber );
-		aveTurnAround = ( totalTurnAround / jobNumber );
+		// printing out info
+		Print( minProcess + 1, waitTime, turnAroundTime, PRINT_NORMAL );
 		
-		Print( 0, aveWait, aveTurnAround, PRINT_FOOTER );
+		// resetting the ready que
+		for( counter = 0; counter < jobNumber; counter++ )
+			readyQueue[counter] = -1;
+		
+		toFinish--;
+	}// end of while
+	
+	aveWait = ( totalWait / jobNumber );
+	aveTurnAround = ( totalTurnAround / jobNumber );
+		
+	Print( 0, aveWait, aveTurnAround, PRINT_FOOTER );
 }
 /*
 ** ShortestNext
@@ -379,7 +407,8 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int toFinish = jobNumber;	// remaining processes
 	int inQueue;
 	int switching = 0;	// used to determine if there is a price for context switching
-
+	int aveWait = 0;
+	int aveTurnAround = 0;
 
 	// loop until all jobs are finished
 	while( switching < 2 )
@@ -500,6 +529,20 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 			}
 		}// end of while
 		
+		// resetting values
+		waitTime = 0.0;
+		turnAroundTime = 0.0;
+
+		for( counter = 0; counter < jobNumber; counter ++){
+			waitTime += processWaitTime[counter];
+			turnAroundTime += processWaitTime[counter] + completionTime[counter];
+		}
+		
+		aveWait = ( waitTime / jobNumber );
+		aveTurnAround = ( turnAroundTime / jobNumber );
+
+		Print( 0, aveWait, aveTurnAround, PRINT_FOOTER );
+
 		toFinish = jobNumber;
 		timeTotal = 0.0;	// setting timer back to 0
 		switching++;	// changing to context switching						
