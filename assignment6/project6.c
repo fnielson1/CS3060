@@ -406,13 +406,10 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int toFinish = jobNumber;	// remaining processes
 	int inQueue;
 	int switching = 0;	// used to determine if there is a price for context switching
-<<<<<<< HEAD
 	int aveWait = 0;
 	int aveTurnAround = 0;
-=======
 	double aveWait = 0;
 	double aveTurnAround = 0;
->>>>>>> 308de22d81e58874885b97959bbfebea39a8f16a
 
 	// loop until all jobs are finished
 	while( switching < 2 )
@@ -437,10 +434,7 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 			printf("Round Robin, with context switching\n");
 			contextSwitch = .4;
 		}
-<<<<<<< HEAD
-=======
 		Print(0,0,0, PRINT_HEADER);
->>>>>>> 308de22d81e58874885b97959bbfebea39a8f16a
 
 		while( toFinish != 0 )
 		{
