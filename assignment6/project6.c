@@ -119,7 +119,7 @@ void FirstCome(const int* arrPid, const int*  arrArrival,
 		// Calculate the wait time
 		curWaitTime = currentTime - curArrivalTime;
 		// Calculate the turnaround time
-		curTurnaroundTime = curServiceTime;
+		curTurnaroundTime = curServiceTime + curWaitTime;
 		// Increment our current time by how the the process ran (service time)
 		currentTime += curServiceTime; // Non-preemtive, service time = run time
 		totalWaitTime += curWaitTime;
@@ -160,14 +160,14 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 	printf( "Shortest Job First\n" );
 	//Print Header
 	// loop through all the jobs
-	for( counter; counter < jobNumber; counter++ )
+	for(; counter < jobNumber; counter++ )
 	{
 		// checking to see if the job as already been processed
 		if( pService[counter] == 0 )
 			continue;
 		minProcess = pid[counter];
 		// finding the shortest job
-		for( i; i < jobNumber; i++ )
+		for(; i < jobNumber; i++ )
 		{
 			// checking to see if it's already been run
 			if( pService[i] == 0 )
@@ -221,7 +221,7 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 	memcpy(arrTimeLeft, arrService, jobNum * sizeof(int)); // Copy the service time to our array
 
 	// Print the function that is running
-	printf("%s\n", "Shortest Time Remaining Time");
+	printf("%s\n", "Shortest Remaining Time Next");
 	Print(0, 0, 0, PRINT_HEADER);
 	// Loop through each Job
 	while(1)
@@ -256,7 +256,7 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 				// plus how long we had to wait in the queue the first time.
 				curPid = arrPid[curJobIndex];
 				curWaitTime = arrWaitTime[curJobIndex];
-				curTurnaroundTime = currentTime - (curWaitTime + curArrivalTime);
+				curTurnaroundTime = currentTime - curArrivalTime;
 				totalWaitTime += curWaitTime;
 				totalTurnaroundTime += curTurnaroundTime;
 
