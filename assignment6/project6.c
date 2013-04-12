@@ -28,7 +28,7 @@ void ShortestNext(const int*, const int*, const int*, const int);
 int GetShortestServiceJob(const int*, const int*, const int, 
 	const int, const int, int*);
 void RoundRobin(const int*, const int*, const int*, const int);
-void Print(int, int, int, int);
+void Print(int, double, double, int);
 void InputToArray(char*,int*, int*, int*);
 int StrToInt(char*);
 
@@ -54,10 +54,8 @@ int main()
 	// Call function to print the 3 arrays
 	FirstCome(arrPid, arrArrival, arrService, _pidIndex);
 	ShortestJobFirst( arrPid, arrArrival, arrService, _pidIndex );
-	RoundRobin( arrPid, arrArrival, arrService, _pidIndex );
 	ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
-	//ShortestNext(arrPid, arrArrival, arrService, _pidIndex);
-	//RoundRobin();
+	RoundRobin( arrPid, arrArrival, arrService, _pidIndex );
 	return 0;
 }
 
@@ -95,10 +93,10 @@ void FirstCome(const int* arrPid, const int*  arrArrival,
 	int index = 0;
 
 	int currentTime = 0; // Keeps track of the time 
-	int totalWaitTime = 0; // Total wait time for all the jobs
-	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
-	int avgWaitTime = 0; // The average wait time
-	int avgTurnaroundTime = 0; // The average turnaround time
+	double totalWaitTime = 0; // Total wait time for all the jobs
+	double totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	double avgWaitTime = 0; // The average wait time
+	double avgTurnaroundTime = 0; // The average turnaround time
 
 	// Print which function is running
 	printf("%s\n", "First Come First Serve");
@@ -167,6 +165,7 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 
 	printf( "Shortest Job First\n" );
 	//Print Header
+	Print(0,0,0, PRINT_HEADER);
 	// loop through all the jobs
 	while( toFinish > 0 )
 	{
@@ -252,10 +251,10 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 	int allJobsDone = 0; 	// Whether all the jobs are done or not
 
 	int currentTime = 0; 	// Keeps track of the time 
-	int totalWaitTime = 0; 	// Total wait time for all the jobs
-	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
-	int avgWaitTime = 0; 	// The average wait time
-	int avgTurnaroundTime = 0; // The average turnaround time
+	double totalWaitTime = 0; 	// Total wait time for all the jobs
+	double totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	double avgWaitTime = 0; 	// The average wait time
+	double avgTurnaroundTime = 0; // The average turnaround time
 
 	int arrTimeLeft[jobNum]; // The time left for a specific job
 	int arrWaitTime[jobNum]; // The wait time for a specific job
@@ -407,8 +406,13 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int toFinish = jobNumber;	// remaining processes
 	int inQueue;
 	int switching = 0;	// used to determine if there is a price for context switching
+<<<<<<< HEAD
 	int aveWait = 0;
 	int aveTurnAround = 0;
+=======
+	double aveWait = 0;
+	double aveTurnAround = 0;
+>>>>>>> 308de22d81e58874885b97959bbfebea39a8f16a
 
 	// loop until all jobs are finished
 	while( switching < 2 )
@@ -433,6 +437,10 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 			printf("Round Robin, with context switching\n");
 			contextSwitch = .4;
 		}
+<<<<<<< HEAD
+=======
+		Print(0,0,0, PRINT_HEADER);
+>>>>>>> 308de22d81e58874885b97959bbfebea39a8f16a
 
 		while( toFinish != 0 )
 		{
@@ -548,20 +556,21 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 		switching++;	// changing to context switching						
 	}
 }
+
 /*
 ** Print
 
 * Prints the job PID, how much time he waited to
 	start, and the turnaround time.
 
-* int header: Whether to print the header or not.
 * int pid: The PID of the job.
-* int waitTime: How long the job was in the read queue.
-* int turnaroundTime: Total time from first ready to done running.
+* double waitTime: How long the job was in the read queue.
+* double turnaroundTime: Total time from first ready to done running.
+* int header: Whether to print the header, footer, or just data.
 */
-void Print(int pid, int waitTime, int turnaroundTime, int header)
+void Print(int pid, double waitTime, double turnaroundTime, int header)
 {
-	char *format = "%-15d %-15d %-15d \n"; // How to format the printing
+	char *format = "%-15d %-15.2f %-15.2f \n"; // How to format the printing
 	char *headerFormat = "%-15s %-15s %-15s \n"; 
 	char *footerFormat = "\n%-20s %-20s \n";
 
@@ -570,7 +579,7 @@ void Print(int pid, int waitTime, int turnaroundTime, int header)
 	else if(header == PRINT_FOOTER)
 	{
 		printf(footerFormat, "Average Wait Time", "Average Turnaround Time");
-		printf("%-20d %-20d \n\n\n", waitTime, turnaroundTime);
+		printf("%-20.2f %-20.2f \n\n\n", waitTime, turnaroundTime);
 	}
 	else
 		printf(format, pid, waitTime, turnaroundTime);
