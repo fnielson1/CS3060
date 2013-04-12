@@ -152,7 +152,11 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 	int i = 0;
 	int waitTime = 0;
 	int turnAroundTime = 0; // wait time + service time
-	
+	int totalWait = 0;
+	int totalTurnAround = 0;
+	double aveWait = 0;
+	double aveTurnAround = 0;
+
 	// copying arrays in case they need to be modified
 	memcpy( pArrival, arrival, jobNumber * sizeof( int ) );
 	memcpy( pService, service, jobNumber * sizeof( int ) );
@@ -180,12 +184,21 @@ void ShortestJobFirst( const int* pid, const int* arrival, const int* service, c
 			waitTime = timeTotal - pArrival[minProcess - 1];
 		else
 			waitTime = 0;
+		
 		turnAroundTime = waitTime + pService[minProcess - 1];
 		timeTotal = timeTotal + pService[minProcess - 1];
+		totalWait += waitTime;
+		totalTurnAround += turnAroundTime;
 		pService[minProcess - 1] = 0;	// zeroing out it's service time because it's done
+		
+
 		Print( minProcess, waitTime, turnAroundTime, PRINT_NORMAL );
 		i = 0;	//reseting counter
 	}
+		aveWait = ( totalWait / jobNumber );
+		aveTurnAround = ( totalTurnAround / jobNumber );
+		
+		Print( 0, aveWait, aveTurnAround, PRINT_FOOTER );
 }
 /*
 ** ShortestNext
@@ -350,14 +363,14 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 {
 	int pService[jobNumber];
 	int priority[jobNumber];	// used to determine if a process has run before
-	double contextSwitch = .4;
+	double contextSwitch = 0;
 	double timeTotal = 0.0;
 	double waitTime = 0.0;
 	double turnAroundTime = 0.0;
 	int toProcessNext[jobNumber];	// array to hold queue processes
 	int stillRunning = 0;	// keeps track if the process still needs to run
-	int completionTime[jobNumber];	// keeps track of how long a process takes to complete
-	int processWaitTime[jobNumber];	// keepts track of how long each process waits time is
+	double completionTime[jobNumber];	// keeps track of how long a process takes to complete
+	double processWaitTime[jobNumber];	// keepts track of how long each process waits time is
 	int toProcess = 0;		// the next process ready to run
 	int next;
 	int nextRunning = 0;
@@ -365,115 +378,132 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int timeSlice = 4;
 	int toFinish = jobNumber;	// remaining processes
 	int inQueue;
+	int switching = 0;	// used to determine if there is a price for context switching
 
-	// copying service into pService for editing
-	memcpy( pService, service, jobNumber * sizeof(int) );
-	// initializing  arrays
-	for( counter = 0; counter < jobNumber; counter++ ){
-		priority[counter] = 0;
-		toProcessNext[counter] = -1;
-		completionTime[counter] = 0;
-		processWaitTime[counter] = 0;
-	}
-	counter = 0;	// resetting counter
 
-	// No contextSwitching
-	printf("Round Robin, no context switching\n");
 	// loop until all jobs are finished
-	while( toFinish != 0 )
+	while( switching < 2 )
 	{
-		// get all the processes that have arrived
-		// or have yet to be completed
-		// and store them in toProcessNext[]
-		for( next = 0; ( arrival[next] <= timeTotal ) && ( next < jobNumber ); next++ ){	
-			if( priority[next] != 0 )
-				continue;
+		// copying service into pService for editing
+		memcpy( pService, service, jobNumber * sizeof(int) );
+		
+		// initializing  arrays
+		for( counter = 0; counter < jobNumber; counter++ ){
+			priority[counter] = 0;
+			toProcessNext[counter] = -1;
+			completionTime[counter] = 0;
+			processWaitTime[counter] = 0;
+		}
+		
+		if( switching == 0 ){
+			contextSwitch = 0;
+			// No contextSwitching
+			printf("Round Robin, no context switching\n");
+		}
+		else{
+			printf("Round Robin, with context switching\n");
+			contextSwitch = .4;
+		}
+
+		while( toFinish != 0 )
+		{
+
+			// get all the processes that have arrived
+			// or have yet to be completed
+			// and store them in toProcessNext[]
+			for( next = 0; ( arrival[next] <= timeTotal ) && ( next < jobNumber ); next++ ){	
+				if( priority[next] != 0 )
+					continue;
 			
-			if( pService[next] == 0 )
-				continue;
+				if( pService[next] == 0 )
+					continue;
 			
-			// already in queue
-			inQueue = 0;
-			while( toProcessNext[nextRunning] >= 0 ){
-				if( toProcessNext[nextRunning] == next ){
-					nextRunning = 0;
-					inQueue = 1;
-					break;
+				// already in queue
+				inQueue = 0;
+				while( toProcessNext[nextRunning] >= 0 ){
+					if( toProcessNext[nextRunning] == next ){
+						nextRunning = 0;
+						inQueue = 1;
+						break;
+					}
+					nextRunning++;
 				}
-				nextRunning++;
+				if( inQueue )
+					continue;
+				toProcessNext[nextRunning] = next;
 			}
-			if( inQueue )
+
+			// check to see if there are any processes that 
+			// haven't been completed yet
+			next = 0;
+			if( stillRunning > 0 ){
+				while( toProcessNext[next] != -1 )
+					next++;
+				toProcessNext[next] = stillRunning - 1;
+				stillRunning = 0;
+			}
+			next = 0;
+			// if no processes are ready
+			if( toProcessNext[next] < 0 ){
+				timeTotal++;
 				continue;
-			toProcessNext[nextRunning] = next;
-		}
-
-		// check to see if there are any processes that 
-		// haven't been completed yet
-		next = 0;
-		if( stillRunning > 0 ){
-			while( toProcessNext[next] != -1 )
-				next++;
-			toProcessNext[next] = stillRunning - 1;
-			stillRunning = 0;
-		}
-		next = 0;
-		// if no processes are ready
-		if( toProcessNext[next] < 0 ){
-			timeTotal++;
-			continue;
-		}
-
-		toProcess = toProcessNext[next];
-		// checking to see if the process has been run before and setting the wait time
-		if( priority[toProcess] == 0 )
-			processWaitTime[toProcess] = timeTotal - arrival[toProcess];
-
-		// check to see if the process will finish in the timeSlice
-		if( pService[toProcess] - timeSlice <= 0 ){
-			timeTotal = timeTotal + pService[toProcess];
-			completionTime[toProcess] += pService[toProcess];
-			turnAroundTime = processWaitTime[toProcess] + completionTime[toProcess];
-
-			// remove and shift processes up in toProcessNext[]
-			while( toProcessNext[next] >= 0 ){
-				if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] != 0 )
-					completionTime[toProcessNext[next + 1]] += pService[toProcess];
-				toProcessNext[next] = toProcessNext[next + 1];
-				next++;
 			}
-			next = 0;	// resetting next
 
-			// setting process service time to zero because it's finished running
-			pService[toProcess] = 0;
-			priority[toProcess] = 1;
-			nextRunning = 0;
-			toFinish = toFinish - 1;
-			Print( pid[toProcess], processWaitTime[toProcess], turnAroundTime, PRINT_NORMAL ); 
-		}
-		else {
-			timeTotal = timeTotal + timeSlice;
-			pService[toProcess] = pService[toProcess] - timeSlice;
-			// check to see if priority flag has been set
+			toProcess = toProcessNext[next];
+			// checking to see if the process has been run before and setting the wait time
 			if( priority[toProcess] == 0 )
+				processWaitTime[toProcess] = timeTotal - arrival[toProcess];
+
+			// check to see if the process will finish in the timeSlice
+			if( pService[toProcess] - timeSlice <= 0 ){
+				timeTotal = timeTotal + pService[toProcess];
+				completionTime[toProcess] += pService[toProcess];
+				turnAroundTime = processWaitTime[toProcess] + completionTime[toProcess];
+
+				// remove and shift processes up in toProcessNext[]
+				while( toProcessNext[next] >= 0 ){
+					if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] != 0 )
+						completionTime[toProcessNext[next + 1]] += pService[toProcess];
+					toProcessNext[next] = toProcessNext[next + 1];
+					next++;
+				}
+				next = 0;	// resetting next
+				timeTotal += contextSwitch;
+
+				// setting process service time to zero because it's finished running
+				pService[toProcess] = 0;
 				priority[toProcess] = 1;
-
-			// incrementing the time to complete
-			completionTime[toProcess] = completionTime[toProcess] + timeSlice;
-			stillRunning = pid[toProcess];
-			nextRunning = 0;
-			// removing and shifting processes up in toProcessNext[]
-			while( toProcessNext[next] >= 0 ){
-				if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] == 1 )
-					completionTime[toProcessNext[next + 1]] += timeSlice;
-				toProcessNext[next] = toProcessNext[next + 1];
-				next++;
+				nextRunning = 0;
+				toFinish = toFinish - 1;
+				Print( pid[toProcess], processWaitTime[toProcess], turnAroundTime, PRINT_NORMAL ); 
 			}
-			next = 0;	// resetting next
-		}
-	}
+			else {
+				timeTotal = timeTotal + timeSlice;
+				pService[toProcess] = pService[toProcess] - timeSlice;
+				// check to see if priority flag has been set
+				if( priority[toProcess] == 0 )
+					priority[toProcess] = 1;
 
-	// With contextSwitching
-	
+				// incrementing the time to complete
+				completionTime[toProcess] = completionTime[toProcess] + timeSlice;
+				stillRunning = pid[toProcess];
+				nextRunning = 0;
+				// removing and shifting processes up in toProcessNext[]
+				while( toProcessNext[next] >= 0 ){
+					if( toProcessNext[next + 1] != -1 && priority[toProcessNext[next + 1]] == 1 )
+						completionTime[toProcessNext[next + 1]] += timeSlice;
+					toProcessNext[next] = toProcessNext[next + 1];
+					next++;
+				}
+				timeTotal += contextSwitch;
+				next = 0;	// resetting next
+			}
+		}// end of while
+		
+		toFinish = jobNumber;
+		timeTotal = 0.0;	// setting timer back to 0
+		switching++;	// changing to context switching						
+	}
 }
 /*
 ** Print
