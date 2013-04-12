@@ -28,7 +28,7 @@ void ShortestNext(const int*, const int*, const int*, const int);
 int GetShortestServiceJob(const int*, const int*, const int, 
 	const int, const int, int*);
 void RoundRobin(const int*, const int*, const int*, const int);
-void Print(int, int, int, int);
+void Print(int, double, double, int);
 void InputToArray(char*,int*, int*, int*);
 int StrToInt(char*);
 
@@ -95,10 +95,10 @@ void FirstCome(const int* arrPid, const int*  arrArrival,
 	int index = 0;
 
 	int currentTime = 0; // Keeps track of the time 
-	int totalWaitTime = 0; // Total wait time for all the jobs
-	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
-	int avgWaitTime = 0; // The average wait time
-	int avgTurnaroundTime = 0; // The average turnaround time
+	double totalWaitTime = 0; // Total wait time for all the jobs
+	double totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	double avgWaitTime = 0; // The average wait time
+	double avgTurnaroundTime = 0; // The average turnaround time
 
 	// Print which function is running
 	printf("%s\n", "First Come First Serve");
@@ -211,10 +211,10 @@ void ShortestNext(const int* arrPid, const int*  arrArrival,
 	int allJobsDone = 0; 	// Whether all the jobs are done or not
 
 	int currentTime = 0; 	// Keeps track of the time 
-	int totalWaitTime = 0; 	// Total wait time for all the jobs
-	int totalTurnaroundTime = 0; // Total turnaround time for all the jobs
-	int avgWaitTime = 0; 	// The average wait time
-	int avgTurnaroundTime = 0; // The average turnaround time
+	double totalWaitTime = 0; 	// Total wait time for all the jobs
+	double totalTurnaroundTime = 0; // Total turnaround time for all the jobs
+	double avgWaitTime = 0; 	// The average wait time
+	double avgTurnaroundTime = 0; // The average turnaround time
 
 	int arrTimeLeft[jobNum]; // The time left for a specific job
 	int arrWaitTime[jobNum]; // The wait time for a specific job
@@ -352,7 +352,6 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int priority[jobNumber];	// used to determine if a process has run before
 	double contextSwitch = .4;
 	double timeTotal = 0.0;
-	double waitTime = 0.0;
 	double turnAroundTime = 0.0;
 	int toProcessNext[jobNumber];	// array to hold queue processes
 	int stillRunning = 0;	// keeps track if the process still needs to run
@@ -483,12 +482,12 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 
 * int header: Whether to print the header or not.
 * int pid: The PID of the job.
-* int waitTime: How long the job was in the read queue.
-* int turnaroundTime: Total time from first ready to done running.
+* double waitTime: How long the job was in the read queue.
+* double turnaroundTime: Total time from first ready to done running.
 */
-void Print(int pid, int waitTime, int turnaroundTime, int header)
+void Print(int pid, double waitTime, double turnaroundTime, int header)
 {
-	char *format = "%-15d %-15d %-15d \n"; // How to format the printing
+	char *format = "%-15d %-15.2f %-15.2f \n"; // How to format the printing
 	char *headerFormat = "%-15s %-15s %-15s \n"; 
 	char *footerFormat = "\n%-20s %-20s \n";
 
@@ -497,7 +496,7 @@ void Print(int pid, int waitTime, int turnaroundTime, int header)
 	else if(header == PRINT_FOOTER)
 	{
 		printf(footerFormat, "Average Wait Time", "Average Turnaround Time");
-		printf("%-20d %-20d \n\n\n", waitTime, turnaroundTime);
+		printf("%-20.2f %-20.2f \n\n\n", waitTime, turnaroundTime);
 	}
 	else
 		printf(format, pid, waitTime, turnaroundTime);
