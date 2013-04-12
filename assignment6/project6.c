@@ -406,8 +406,6 @@ void RoundRobin( const int *pid, const int *arrival, const int *service, int job
 	int toFinish = jobNumber;	// remaining processes
 	int inQueue;
 	int switching = 0;	// used to determine if there is a price for context switching
-	int aveWait = 0;
-	int aveTurnAround = 0;
 	double aveWait = 0;
 	double aveTurnAround = 0;
 
