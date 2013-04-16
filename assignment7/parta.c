@@ -33,6 +33,9 @@ int main()
 	pthread_create(&thr3, NULL, IncrementCounter, NULL);
 	pthread_create(&thr4, NULL, IncrementCounter, NULL);
 
+	// Print the value of _count
+	printf("%s%d\n", "COUNT: ",  _count);
+
 	return 0;
 }
 
